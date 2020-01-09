@@ -7,9 +7,8 @@ Eric S. Tvedte
 The repository contains Supplementary Data for the manuscript, including Tables, Figures, and Files.
 
 ## Table of Contents
-1. [Prepare sequencing files for assembly](#ecoli.prep)
-2. [Determine read length distributions](#ecoli.read)
-3. [E. coli genome assembly using Canu](#ecoli.canu)
+1. [Pre-processing MinION sequencing data](#seq.prep)
+2. [Genome assembly](#assemble)
 4. [E. coli genome assembly using Unicycler](#ecoli.uni)
 5. [E. coli BUSCO](#ecoli.busco)
 6. [E. coli assembly correctness](#ecoli.correct)
@@ -21,16 +20,20 @@ The repository contains Supplementary Data for the manuscript, including Tables,
 11. [Alignment of contigs to D. ananassae polytene map](#dana.map)
 
 
-### Prepare sequencing files for assembly <a name="ecoli.prep"></a>
+### Pre-processing MinION sequencing data <a name="seq.prep"></a>  
 **Basecalling with guppy**
-/usr/local/packages/guppy-3.1.5/bin/guppy_basecaller --input_path fast5_dir --save_path output_dir --config dna_r9.4.1_450bps_fast.cfg --fast5_out --qscore_filtering --min_qscore 7 --records_per_fastq 10000000 --num_callers 8 --cpu_threads_per_caller 4
+```
+/usr/local/packages/guppy-3.1.5/bin/guppy_basecaller --input_path fast5_dir --save_path output_dir --config dna_r9.4.1_450bps_fast.cfg --fast5_out --qscore_filtering --min_qscore 7 --records_per_fastq 10000000 --num_callers 8 --cpu_threads_per_caller 4  
+```
 
 **Filter lambda from sequencing data**  
 zcat minion.LIG.raw.fastq.gz | NanoLyse --reference lambda.DCS.fasta | gzip > minion.LIG.filter.lambda.fastq.gz
 
-### Genome assembly using Canu <a name="ecoli.canu"></a>
+### Genome assembly <a name="assemble"></a>  
+**Canu**  
 canu -p output.prefix -d output.dir genomeSize=240m corOutCoverage=60 gridEngineThreadsOption="-pe thread THREADS" gridEngineMemoryOption="-l mem_free=MEMORY" gridOptions="-P jdhotopp-lab -q threaded.q" -pacbio-raw raw.pacbio.reads.fastq.gz -nanopore-raw minion.LIG.filter.lambda.fastq.gz
 
+**Flye**  
 echo -e "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/packages/gcc/lib64\nexport PYTHONPATH=$PYTHONPATH:/usr/local/packages/flye-2.4.2/lib/python2.7/site-packages\n/usr/local/packages/flye-2.4.2/bin/flye -g 240m -t 24 -o /local/projects-t3/RDBKO/dana.flye/ --asm-coverage 60 --pacbio-raw /local/projects-t3/RDBKO/sequencing/Dana.Hawaii.pbSequelII.raw.fastq.gz
 
 ### Genome polishing
