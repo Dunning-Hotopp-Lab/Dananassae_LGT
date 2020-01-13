@@ -107,7 +107,73 @@ python run_BUSCO.py -f -c 8 -t /local/scratch/etvedte/tmp -i polished.contigs.fa
 ```
 
 ### Characterization of euchromatic regions of D. ananassae <a name="dana.chrom.map"></a>
+**Initial BLAST search to determine contig orientation**
+```
+makeblastdb -in polished.contigs.fasta -out polished.contigs.fasta -dbtype nucl -parse_seqids
+blastn -query mapping_loci.fasta -db polished.contigs.fasta -max_target_seqs 10 -max_hsps 10 -outfmt 6 > initial.blast.out
+```
+
+**Extract matching contigs, reverse complement if necessary**
+```
+samtools faidx polished.contigs.fasta fwd.contig.name >> polished.contigs.correct.fasta
+samtools faidx -i polished.contigs.fasta rev.contig.name >> polished.contigs.correct.fasta
+```
+
+**Final BLAST search, using matched contigs as database and custom BLAST output**
+```
+makeblastdb -in polished.contigs.correct.fasta -out polished.contigs.correct.fasta -dbtype nucl -parse_seqids
+blastn -query mapping_loci.fasta -db polished.contigs.correct.fasta -max_target_seqs 1 -max_hsps 1 -outfmt "6 qseqid sseqid pident length sstart send evalue slen" > final.blast.out
+```
+
+**Visualization of contigs, including locations of identified euchromatic loci**
+```
+contigs.Rmd using data.txt
+```
 
 ### Characterization of Y contigs in D. ananassae <a name="dana.y"></a>  
+**Index reference genome**
+```
+bwa index purged.fa
+```
 
-### Characterization of LGT contigs in D. ananassae <a name="dana.lgt"></a>   
+**Map female short reads**
+``` 
+echo -e "bwa mem -t 8 -k 23 /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa /local/projects/JULIE/Dana_cHi_female_2/ILLUMINA_DATA/JULIE_20190729_K00134_IL100134730_MX83_L001_R1_trimmed.fastq.gz /local/projects/JULIE/Dana_cHi_female_2/ILLUMINA_DATA/JULIE_20190729_K00134_IL100134730_MX83_L001_R2_trimmed.fastq.gz | samtools view -bho /local/projects-t3/RDBKO/dana.chrY/purged.contigs.mapped.cHi_female2_output.bam -" | qsub -P jdhotopp-lab -l mem_free=50G -N BWAMEM -q threaded.q -pe thread 8 -cwd
+```
+
+**Map male short reads**
+``` 
+echo -e "bwa mem -t 8 -k 23 /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa /local/projects/JULIE/Dana_cHi_male_2/ILLUMINA_DATA/JULIE_20190702_K00134_IL100134728_MX81_L008_R1_trimmed.fastq.gz /local/projects/JULIE/Dana_cHi_male_2/ILLUMINA_DATA/JULIE_20190702_K00134_IL100134728_MX81_L008_R2_trimmed.fastq.gz | samtools view -bho /local/projects-t3/RDBKO/dana.chrY/purged.contigs.mapped.cHi_male2_output.bam -" | qsub -P jdhotopp-lab -l mem_free=50G -N BWAMEM -q threaded.q -pe thread 8 -cwd
+```
+
+**Sort SAM and remove duplicates**
+```
+for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=$f O=${f%_o*}_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte/" | qsub -P jdhotopp-lab -l mem_free=2G -N SortSam -cwd; done  
+for f in *output.bam; do echo "java -Xmx10g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar MarkDuplicates I=$f O=${f%_s*}_dedup.bam M=${f%_s*}_dedup.metrics VALIDATION_STRINGENCY=SILENT AS=true CREATE_INDEX=true REMOVE_DUPLICATES=true
+```
+
+**Calculate sequencing depth, filter reads with MAPQ < 10**
+```
+samtools depth -Q 10 mel_f_new.bam mel_m_new.bam > mel_new.out
+```
+
+**Determine average and median female/male depth in 10kb windows (see Chang and Larracuente, 2018)** 
+```perl
+perl /local/projects-t3/RDBKO/scripts/Chang2019_frame_depth_new.pl mel_new.out
+```
+
+### Characterization of LGT contigs in D. ananassae <a name="dana.lgt"></a>
+**Nucmer alignment to identify LGT contigs
+```
+nucmer --maxmatch --prefix wAna.LGT /local/aberdeen2rw/julie/Matt_dir/EWANA/references/wAna_v2.complete.pilon.fasta /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa
+show-coords -r wAna.LGT.delta > wAna.LGT.r.coords
+cat wAna.LGT.r.coords | tail -n +6 | awk '{print $13}' | sort -n | uniq > wAna.LGT.contigs.list
+xargs samtools faidx /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa < wAna.LGT.contigs.list >> wAna.LGT.contigs.fasta
+```
+
+**Nucmer aligment to LGT contigs**
+```
+~jdhotopp/bin/residues.pl wAna.LGT.contigs.fasta > wAna.LGT.contigs.residues
+nucmer --maxmatch --prefix wAna.LGT.only /local/aberdeen2rw/julie/Matt_dir/EWANA/references/wAna_v2.complete.pilon.fasta wAna.LGT.contigs.fasta
+/local/projects-t3/RDBKO/scripts/Mchung.LGT.mummerplot.Rmd with residues.txt and LGT.match.delta
+```
