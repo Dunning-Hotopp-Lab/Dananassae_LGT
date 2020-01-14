@@ -56,7 +56,18 @@ echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/b
 **polish with FreeBayes**
 
 **purge haplotigs from assembly**
+```
+echo "minimap2 -xmap-pb purged.fa /local/projects-t3/RDBKO/sequencing/Dana.Hawaii.pbSequelII.raw.fastq.gz | gzip -c - > dana.hybrid.80X.purged.mappedsqII.paf.gz" | qsub -P jdhotopp-lab -l mem_free=10G -N minimap2 -cwd
+/home/etvedte/scripts/purge_dups/bin/pbcstat dana.hybrid.80X.contigs.arrow.polished.mappedhifi.paf.gz
+/home/etvedte/scripts/purge_dups/bin/calcuts PB.stat > cutoffs 2> calcuts.log
+/home/etvedte/scripts/purge_dups/scripts/hist_plot.py PB.stat hist.out.pdf
+```
 
+**QUAST**
+```
+use python-3.5
+echo "/home/etvedte/scripts/quast-5.0.2/quast.py --large --k-mer-stats --fragmented --threads 12 /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd1/dana.hybrid.80X.contigs.arrow.polished.rn.fasta /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa -r /local/projects-t3/RDBKO/nonIGS_dana/caf1/GCA_000005115.1_dana_caf1_genomic_scaffolds.fna -g /local/projects-t3/RDBKO/nonIGS_dana/caf1/GCA_000005115.1_dana_caf1_genomic.gff -o /local/projects-t3/RDBKO/dana.correctness/quast" | qsub -P jdhotopp-lab -l mem_free=10G -N quast-LG -q threaded.q -pe thread 12 -cwd -V
+```
 
 **Rename FASTA**  
 for f in *_contigs.fasta; do awk '/^>/{print ">ecoli_contig" ++i; next}{print}' < $f > ${f%_c*}_contigs_rn.fasta; done
@@ -149,7 +160,7 @@ echo -e "bwa mem -t 8 -k 23 /local/projects-t3/RDBKO/dana.postassembly/purge_dup
 **Sort SAM and remove duplicates**
 ```
 for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=$f O=${f%_o*}_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte/" | qsub -P jdhotopp-lab -l mem_free=2G -N SortSam -cwd; done  
-for f in *output.bam; do echo "java -Xmx10g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar MarkDuplicates I=$f O=${f%_s*}_dedup.bam M=${f%_s*}_dedup.metrics VALIDATION_STRINGENCY=SILENT AS=true CREATE_INDEX=true REMOVE_DUPLICATES=true
+for f in *sorted.bam; do echo "java -Xmx10g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar MarkDuplicates I=$f O=${f%_s*}_dedup.bam M=${f%_s*}_dedup.metrics VALIDATION_STRINGENCY=SILENT AS=true CREATE_INDEX=true REMOVE_DUPLICATES=true" | qsub -P jdhotopp-lab -l mem_free=10G -N MarkDups -cwd; done
 ```
 
 **Calculate sequencing depth, filter reads with MAPQ < 10**
