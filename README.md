@@ -69,6 +69,12 @@ use python-3.5
 echo "/home/etvedte/scripts/quast-5.0.2/quast.py --large --k-mer-stats --fragmented --threads 12 /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd1/dana.hybrid.80X.contigs.arrow.polished.rn.fasta /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa -r /local/projects-t3/RDBKO/nonIGS_dana/caf1/GCA_000005115.1_dana_caf1_genomic_scaffolds.fna -g /local/projects-t3/RDBKO/nonIGS_dana/caf1/GCA_000005115.1_dana_caf1_genomic.gff -o /local/projects-t3/RDBKO/dana.correctness/quast" | qsub -P jdhotopp-lab -l mem_free=10G -N quast-LG -q threaded.q -pe thread 12 -cwd -V
 ```
 
+**KAT**
+```
+use kat-2.4.0
+echo "kat comp -t 16 -o purged_vs_illuminaR1 /local/projects-t3/RDBKO/sequencing/Dana.Hawaii.illuminaPE_R1.fastq.gz /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -N kat.comp.illumina -cwd -V
+```
+
 **Rename FASTA**  
 for f in *_contigs.fasta; do awk '/^>/{print ">ecoli_contig" ++i; next}{print}' < $f > ${f%_c*}_contigs_rn.fasta; done
 
