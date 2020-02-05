@@ -194,3 +194,11 @@ xargs samtools faidx /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purge
 nucmer --maxmatch --prefix wAna.LGT.only /local/aberdeen2rw/julie/Matt_dir/EWANA/references/wAna_v2.complete.pilon.fasta wAna.LGT.contigs.fasta
 /local/projects-t3/RDBKO/scripts/Mchung.LGT.mummerplot.Rmd with residues.txt and LGT.match.delta
 ```
+
+**Mugsy**
+```
+source /local/projects/angiuoli/mugsy/mugsyenv.sh
+/local/projects/angiuoli/mugsy/mugsy --directory /local/projects-t3/RDBKO/dana.LGT/80X.polished.rd1/mugsy --prefix ecoli 1.ecoli.fasta 2.ecoli.fasta 3.ecoli.fasta
+source /home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/pythonenv.sh
+/home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/process_maf.sh 432481_433504_CDS.maf
+```
