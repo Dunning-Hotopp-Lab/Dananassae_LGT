@@ -14,7 +14,8 @@ The repository contains Supplementary Data for the manuscript, including Tables,
 5. [BUSCO analysis](#busco)
 6. [Characterization of euchromatic regions of D. ananassae](#dana.chrom.map)  
 7. [Characterization of Y contigs in D. ananassae](#dana.y)  
-8. [Characterization of LGT contigs in D. ananassae](#dana.lgt)  
+8. [Characterization of chromosome 4 contigs in D. ananassae](#dana.chr4)
+9. [Characterization of LGT contigs in D. ananassae](#dana.lgt)  
 
 ### Pre-processing MinION sequencing data <a name="seq.prep"></a>  
 **Basecalling with guppy**
@@ -109,8 +110,7 @@ echo "/usr/local/packages/repeatmodeler-1.0.11/RepeatModeler -database Dana.repe
 
 **Soft-masking genome using repeat families
 ```
-/usr/local/packages/repeatmodeler-1.0.11/RepeatModeler -database BrugiaPahangiNuclearGenome.fa
-    /usr/local/packages/repeatmasker-4.0.7/RepeatMasker -lib rugiaPahangiNuclearGenome.fa-families.fa /local/aberdeen2rw/julie/JM_dir/PahangiPilonFASTA/Repeats/BrugiaPahangiNuclearGenome.fa
+/usr/local/packages/repeatmasker-4.0.7/RepeatMasker -lib rugiaPahangiNuclearGenome.fa-families.fa /local/aberdeen2rw/julie/JM_dir/PahangiPilonFASTA/Repeats/BrugiaPahangiNuclearGenome.fa
 ```
 
 **Genome annotation using BRAKER**
@@ -150,7 +150,11 @@ contigs.Rmd using data.txt
 ### Characterization of Y contigs in D. ananassae <a name="dana.y"></a>  
 **Index reference genome**
 ```
-bwa index purged.fa
+bwa index /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta
+bwa mem -k 23 -t 8 female.R1.fq.gz female.R2.fq.gz
+bwa mem -k 23 -t 8 male.R1.fq.gz male.R2.fq.gz
+
+for f in /local/projects/JULIE/Dana*/ILLUMINA_DATA/*R1_trimmed.fastq.gz; do echo "bwa mem -k 23 -t 8 /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta $f ${f%_R*}_R2_trimmed.fastq.gz | samtools view -bho /local/projects-t3/RDBKO/dana.chrY/FREEZE/$(basename ${f%_R*})_output.bam" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N bwamem -cwd ; done
 ```
 
 **Map female short reads**
@@ -177,6 +181,21 @@ samtools depth -Q 10 mel_f_new.bam mel_m_new.bam > mel_new.out
 **Determine average and median female/male depth in 10kb windows (see Chang and Larracuente, 2018)** 
 ```perl
 perl /local/projects-t3/RDBKO/scripts/Chang2019_frame_depth_new.pl mel_new.out
+```
+
+### Characterization of chromosome 4 contigs in D. ananassae <a name="dana.chr4"></a>
+**Nucmer alignment to identify LGT contigs
+```
+nucmer --maxmatch --prefix chr4 -l 1000 ../Leung2017_chr4_scaffolds.fasta /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta
+show-coords -r chr4.delta > chr4.coords
+cat chr4.coords | tail -n +6 | awk '{print $13}' | sort -n | uniq > chr4.contigs.list
+xargs samtools faidx /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta < chr4.contigs.list >> chr4.contigs.fasta
+```
+
+**Nucmer aligment to chromosome 4 contigs**
+```
+nucmer --maxmatch --prefix chr4.match -l 1000 ../Leung2017_chr4_scaffolds.fasta chr4.contigs.fasta
+mummerplot --prefix chr4.match --color --postscript chr4.match.delta
 ```
 
 ### Characterization of LGT contigs in D. ananassae <a name="dana.lgt"></a>
