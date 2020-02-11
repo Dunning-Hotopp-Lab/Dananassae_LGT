@@ -64,6 +64,12 @@ echo "minimap2 -xmap-pb purged.fa /local/projects-t3/RDBKO/sequencing/Dana.Hawai
 /home/etvedte/scripts/purge_dups/scripts/hist_plot.py PB.stat hist.out.pdf
 ```
 
+**Convert bases to upper case**
+*By default arrow outputs regions with no consensus as lower case, i.e. 'acgt'. In order to properly annotate repetitive regions as lower case, all bases must be converted to upper case. Note that this could have been accomplished in arrow using the parameter --noEvidenceConsensusCall reference* 
+```
+awk 'BEGIN{FS=" "}{if(!/>/){print toupper($0)}else{print $1}}' dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fmt.fasta
+```
+
 **QUAST**
 ```
 use python-3.5
@@ -85,6 +91,8 @@ for f in *_contigs.fasta; do awk '/^>/{print ">ecoli_contig" ++i; next}{print}' 
 ```
 hisat2-build polished.contigs.fasta polished.contigs.hisat2  
 hisat2 -p 8 --max-intronlen 300000 -x polished.contigs.hisat2 -U reads.fastq.gz | samtools view -bho output.bam -  
+
+for f in /local/projects-t3/RDBKO/sequencing/Dana_illumina_RNA_SRA/*.fastq; do echo "hisat2 -p 8 --max-intronlen 300000 -x dana.hybrid.80X.arrow.rd2.contigs.FREEZE.hisat2 -U $f | samtools view -bho ${f%_1*}_output.bam -" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N hisat2 -cwd; done
 ```
 
 **Map long RNA reads**
@@ -111,6 +119,8 @@ echo "/usr/local/packages/repeatmodeler-1.0.11/RepeatModeler -database Dana.repe
 **Soft-masking genome using repeat families
 ```
 /usr/local/packages/repeatmasker-4.0.7/RepeatMasker -lib rugiaPahangiNuclearGenome.fa-families.fa /local/aberdeen2rw/julie/JM_dir/PahangiPilonFASTA/Repeats/BrugiaPahangiNuclearGenome.fa
+
+echo "/usr/local/packages/repeatmasker-4.0.7/RepeatMasker -xsmall -pa 24 -engine wublast -a -lib Dana.repeats.database-families.fa dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 24 -N RepeatMasker -cwd
 ```
 
 **Genome annotation using BRAKER**
