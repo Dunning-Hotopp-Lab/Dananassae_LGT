@@ -190,6 +190,13 @@ samtools depth -Q 10 mel_f_new.bam mel_m_new.bam > mel_new.out
 
 **Determine average and median female/male depth in 10kb windows (see Chang and Larracuente, 2018)** 
 ```perl
+female
+JULIE_20190729_K00134_IL100134730_MX83_L001
+JULIE_20190729_K00134_IL100134731_MX84_L001
+male
+JULIE_20190702_K00134_IL100134728_MX81_L008
+JULIE_20190702_K00134_IL100134729_MX82_L008
+
 perl /local/projects-t3/RDBKO/scripts/Chang2019_frame_depth_new.pl mel_new.out
 ```
 
