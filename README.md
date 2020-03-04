@@ -70,6 +70,10 @@ echo "minimap2 -xmap-pb purged.fa /local/projects-t3/RDBKO/sequencing/Dana.Hawai
 awk 'BEGIN{FS=" "}{if(!/>/){print toupper($0)}else{print $1}}' dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fmt.fasta
 ```
 
+**NUCMER**
+nucmer --maxmatch --prefix FREEZE.chrs -l 100 dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta
+
+
 **QUAST**
 ```
 use python-3.5
