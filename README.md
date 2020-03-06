@@ -58,7 +58,10 @@ echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/b
 
 **purge haplotigs from assembly**
 ```
-echo "minimap2 -xmap-pb purged.fa /local/projects-t3/RDBKO/sequencing/Dana.Hawaii.pbSequelII.raw.fastq.gz | gzip -c - > dana.hybrid.80X.purged.mappedsqII.paf.gz" | qsub -P jdhotopp-lab -l mem_free=10G -N minimap2 -cwd
+echo "minimap2 -xmap-pb /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.fasta /local/projects-t3/RDBKO/sequencing/Dana.Hawaii.pbSequelII.raw.fastq.gz | gzip -c - > dana.hybrid.80X.arrow.rd2.mappedsqII.paf.gz" | qsub -P jdhotopp-lab -l mem_free=10G -N minimap2 -cwd
+
+/local/projects-t3/RDBKO/scripts/purge_dups/bin/split_fa /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.fasta > /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.split
+
 /home/etvedte/scripts/purge_dups/bin/pbcstat dana.hybrid.80X.contigs.arrow.polished.mappedhifi.paf.gz
 /home/etvedte/scripts/purge_dups/bin/calcuts PB.stat > cutoffs 2> calcuts.log
 /home/etvedte/scripts/purge_dups/scripts/hist_plot.py PB.stat hist.out.pdf
@@ -83,7 +86,8 @@ echo "/home/etvedte/scripts/quast-5.0.2/quast.py --large --k-mer-stats --fragmen
 **KAT**
 ```
 use kat-2.4.0
-echo "kat comp -t 16 -o purged_vs_illuminaR1 /local/projects-t3/RDBKO/sequencing/Dana.Hawaii.illuminaPE_R1.fastq.gz /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -N kat.comp.illumina -cwd -V
+echo "kat comp -t 16 -o FREEZE_vs_illuminaR1 /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_ILLUMINA_DATA/RANDD_20190322_K00134_IL100123454_MX29_L004_R1.fastq /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -N kat.comp.illumina -cwd -V
+
 ```
 
 **Rename FASTA**  
