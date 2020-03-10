@@ -16,6 +16,7 @@ The repository contains Supplementary Data for the manuscript, including Tables,
 7. [Characterization of Y contigs in D. ananassae](#dana.y)  
 8. [Characterization of chromosome 4 contigs in D. ananassae](#dana.chr4)
 9. [Characterization of LGT contigs in D. ananassae](#dana.lgt)  
+10. [Transcription of LGT regions](#dana.lgt.tx)  
 
 ### Pre-processing MinION sequencing data <a name="seq.prep"></a>  
 **Basecalling with guppy**
@@ -185,7 +186,7 @@ echo -e "bwa mem -t 8 -k 23 /local/projects-t3/RDBKO/dana.postassembly/purge_dup
 echo -e "bwa mem -t 8 -k 23 /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa /local/projects/JULIE/Dana_cHi_male_2/ILLUMINA_DATA/JULIE_20190702_K00134_IL100134728_MX81_L008_R1_trimmed.fastq.gz /local/projects/JULIE/Dana_cHi_male_2/ILLUMINA_DATA/JULIE_20190702_K00134_IL100134728_MX81_L008_R2_trimmed.fastq.gz | samtools view -bho /local/projects-t3/RDBKO/dana.chrY/purged.contigs.mapped.cHi_male2_output.bam -" | qsub -P jdhotopp-lab -l mem_free=50G -N BWAMEM -q threaded.q -pe thread 8 -cwd
 ```
 
-**Sort SAM and remove duplicates**
+**Sort BAM and remove duplicates**
 ```
 for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=$f O=${f%_o*}_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte/" | qsub -P jdhotopp-lab -l mem_free=2G -N SortSam -cwd; done  
 for f in *sorted.bam; do echo "java -Xmx10g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar MarkDuplicates I=$f O=${f%_s*}_dedup.bam M=${f%_s*}_dedup.metrics VALIDATION_STRINGENCY=SILENT AS=true CREATE_INDEX=true REMOVE_DUPLICATES=true" | qsub -P jdhotopp-lab -l mem_free=10G -N MarkDups -cwd; done
@@ -245,4 +246,23 @@ source /local/projects/angiuoli/mugsy/mugsyenv.sh
 /local/projects/angiuoli/mugsy/mugsy --directory /local/projects-t3/RDBKO/dana.LGT/80X.polished.rd1/mugsy --prefix ecoli 1.ecoli.fasta 2.ecoli.fasta 3.ecoli.fasta
 source /home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/pythonenv.sh
 /home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/process_maf.sh 432481_433504_CDS.maf
+```
+### Transcription of LGT regions <a name="dana.lgt.tx"></a>
+
+**Map short RNA reads** 
+```
+hisat2-build polished.contigs.fasta polished.contigs.hisat2  
+hisat2 -p 8 --max-intronlen 300000 -x polished.contigs.hisat2 -U reads.fastq.gz | samtools view -bho output.bam -  
+
+hisat2-build /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.hisat2
+
+for f in /local/projects-t3/RDBKO/sequencing/Dana_illumina_RNA_SRA/*.fastq; do echo "hisat2 -p 8 --max-intronlen 300000 -x /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.hisat2 -U $f | samtools view -bho ${f%_1*}_output.bam -" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N hisat2 -cwd; done
+```
+
+**Sort BAM**
+```
+java -jar picard.jar SortSam I=output.bam O=sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT
+
+for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=$f O=${f%_o*}_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte/" | qsub -P jdhotopp-lab -l mem_free=2G -N SortSam -cwd; done  
+
 ```
