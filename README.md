@@ -264,7 +264,11 @@ hisat2 -p 8 --max-intronlen 300000 -x polished.contigs.hisat2 -U reads.fastq.gz 
 
 hisat2-build /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.hisat2
 
+# single reads
 for f in /local/projects-t3/RDBKO/sequencing/Dana_illumina_RNA_SRA/*.fastq; do echo "hisat2 -p 8 --max-intronlen 300000 -x /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.hisat2 -U $f | samtools view -bho ${f%_1*}_output.bam -" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N hisat2 -cwd; done
+
+# paired reads 
+echo "hisat2 -p 8 --max-intronlen 300000 -x /local/aberdeen2rw/julie/ben/Dana_transcriptome/hisat2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta.hisat2 -1 "$MATE_1" -2 "$MATE_2" | samtools view -bho "$BAM" -" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N hisat2 -cwd
 ```
 
 **Sort BAM**
@@ -276,7 +280,7 @@ for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools
 
 **Count reads in each LGT region**
 ```
-#count how many reads map to LGT region, include conditional statement to ensure coordinates are in correct order
+#count reads that map to the 86 LGT regions, include conditional statement to ensure coordinates are in correct order
 
 BAM=/local/aberdeen2rw/julie/ben/Dana_transcriptome/hisat2/SRR921454_sorted.bam
 LIST=/local/aberdeen2rw/julie/ben/Dana_transcriptome/hisat2/SRR921454.list
