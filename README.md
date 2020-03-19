@@ -272,9 +272,10 @@ for f in /local/projects-t3/RDBKO/sequencing/Dana_illumina_RNA_SRA/*.fastq; do e
 java -jar picard.jar SortSam I=output.bam O=sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT
 
 for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=$f O=${f%_o*}_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte/" | qsub -P jdhotopp-lab -l mem_free=2G -N SortSam -cwd; done  
-
 ```
+
 **Count reads in each LGT region**
+```
 #count how many reads map to LGT region, include conditional statement to ensure coordinates are in correct order
 
 BAM=/local/aberdeen2rw/julie/ben/Dana_transcriptome/hisat2/SRR921454_sorted.bam
@@ -300,5 +301,4 @@ fi
 pr -mts "$OLD_CSV" "$LIST" > "$NEW_CSV"
 
 done < /local/aberdeen2rw/julie/ben/Dana_transcriptome/hisat2/wAna.LGT.only.filter.samtools.coords
-
 ```
