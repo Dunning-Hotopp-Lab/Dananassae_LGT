@@ -32,7 +32,7 @@ zcat minion.LIG.raw.fastq.gz | NanoLyse --reference lambda.DCS.fasta | gzip > mi
 ### Genome assembly <a name="assemble"></a>  
 **Canu**  
 ```
-canu -p output.prefix -d output.dir genomeSize=240m corOutCoverage=60 gridEngineThreadsOption="-pe thread THREADS" gridEngineMemoryOption="-l mem_free=MEMORY" gridOptions="-P jdhotopp-lab -q threaded.q" -pacbio-raw raw.pacbio.reads.fastq.gz -nanopore-raw minion.LIG.filter.lambda.fastq.gz
+canu -p output.prefix -d output.dir genomeSize=240m corOutCoverage=80 gridEngineThreadsOption="-pe thread THREADS" gridEngineMemoryOption="-l mem_free=MEMORY" gridOptions="-P jdhotopp-lab -q threaded.q" -pacbio-raw raw.pacbio.reads.fastq.gz -nanopore-raw minion.LIG.filter.lambda.fastq.gz
 ```
 
 **Flye** 
@@ -74,8 +74,37 @@ echo "minimap2 -xmap-pb /local/projects-t3/LGT/Dananassae_2020/dana.postassembly
 awk 'BEGIN{FS=" "}{if(!/>/){print toupper($0)}else{print $1}}' dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fmt.fasta
 ```
 
+**heterochromatin-sensitive assembly
+*Map long reads to genome*
+echo "minimap2 -ax map-ont -t 16 /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta /local/projects-t3/RDBKO/sequencing/RANDD_LIG_Dana_20190405_merged_pass_filtlambda.fastq | samtools view -bho dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.LIG_output.bam" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -cwd -N minimap2
+
+*sort Sam*
+echo -e "java -Xmx20g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.LIG_output.bam O=dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.LIG_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte" | qsub -P jdhotopp-lab -l mem_free=20G -N samsort -cwd
+
+*Generate BED file for non-chromosomal contigs
+```
+awk -v OFS='\t' {'print $1, $2'} ../dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta.fai > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.genomebed.bed
+
+bedtools makewindows -g dana.hybrid.80X.arrow.rd2.contigs.FREEZE.genomebed.bed -w 10000000000 > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.bed
+```
+*Retrieve reads mapping to unlocalized contigs and unmapped*
+```
+echo "samtools view -@16 -L dana.hybrid.80X.arrow.rd2.contigs.FREEZE.bed -b /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.sqII_sorted.bam | samtools fasta - > dana.pb.heterochromatin.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -cwd -N sam.fasta
+echo "samtools view -@16 -f 4 /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.sqII_sorted.bam | samtools fasta - > dana.pb.sqII.unmapped.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -cwd -N sam.fasta
+
+```
+**or BEDtools**
+```
+echo "samtools view -@16 -L nonchr.contig.list -b /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.sqII_sorted.bam | bedtools bamtofastq -i - -fq dana.pb.sqII.heterochromatin.fastq" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -cwd -N bam.to.fastq
+```
+
+**assembly**
+```
+/usr/local/packages/canu-1.8/bin/canu -p dana.het -d /local/projects-t3/LGT/Dananassae_2020/dana.het.assembly/pb+minion.fasta genomeSize=85m corOutCoverage=100 corMinCoverage=0 stopOnReadQuality=false MhapSensitivity=normal gridEngineThreadsOption="-pe thread THREADS" gridEngineMemoryOption="-l mem_free=MEMORY" gridOptions="-P jdhotopp-lab -q threaded.q" -pacbio-raw /local/projects-t3/LGT/Dananassae_2020/dana.het.assembly/dana.pb.sqII.het.unmap.fasta -nanopore-raw /local/projects-t3/LGT/Dananassae_2020/dana.het.assembly/dana.minion.LIG.het.unmapped.fasta
+```
+
 **NUCMER**
-nucmer --maxmatch --prefix FREEZE.chrs -l 100 dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta
+nucmer --maxmatch --prefix FREEZE.chrs -l 200 dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta
 
 
 **QUAST**
@@ -264,11 +293,7 @@ hisat2 -p 8 --max-intronlen 300000 -x polished.contigs.hisat2 -U reads.fastq.gz 
 
 hisat2-build /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.hisat2
 
-# single reads
 for f in /local/projects-t3/RDBKO/sequencing/Dana_illumina_RNA_SRA/*.fastq; do echo "hisat2 -p 8 --max-intronlen 300000 -x /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.hisat2 -U $f | samtools view -bho ${f%_1*}_output.bam -" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N hisat2 -cwd; done
-
-# paired reads 
-echo "hisat2 -p 8 --max-intronlen 300000 -x /local/aberdeen2rw/julie/ben/Dana_transcriptome/hisat2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta.hisat2 -1 "$MATE_1" -2 "$MATE_2" | samtools view -bho "$BAM" -" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N hisat2 -cwd
 ```
 
 **Sort BAM**
@@ -276,33 +301,36 @@ echo "hisat2 -p 8 --max-intronlen 300000 -x /local/aberdeen2rw/julie/ben/Dana_tr
 java -jar picard.jar SortSam I=output.bam O=sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT
 
 for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=$f O=${f%_o*}_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte/" | qsub -P jdhotopp-lab -l mem_free=2G -N SortSam -cwd; done  
+
 ```
 
-**Count reads in each LGT region**
+**Nucmer alignment**
 ```
-#count reads that map to the 86 LGT regions, include conditional statement to ensure coordinates are in correct order
+nucmer --prefix wAna.LGT.max.1000 -l 1000 --maxmatch wAna_v2.complete.pilon.fasta wAna.LGT.contigs.fasta
 
-BAM=/local/aberdeen2rw/julie/ben/Dana_transcriptome/hisat2/SRR921454_sorted.bam
-LIST=/local/aberdeen2rw/julie/ben/Dana_transcriptome/hisat2/SRR921454.list
-OLD_CSV=/local/aberdeen2rw/julie/ben/Dana_transcriptome/hisat2/Dana_LGT_transcription_6.csv
-NEW_CSV=/local/aberdeen2rw/julie/ben/Dana_transcriptome/hisat2/Dana_LGT_transcription_7.csv
+```
 
-while read Line
-do
-contig=$(echo $Line | awk '{print $2}')
+**Custom plot**
+```
+/local/projects-t3/RDBKO/scripts/Mchung.LGT.mummerplot.Rmd using nucmer delta output file and LGT contigs residues file
+```
 
-start=$(echo $Line | awk '{print $3}')
+**Generate coordinates file for nucmer alignments**
+```
+show-coords -rl wAna.LGT.max.1000.delta > wAna.LGT.max.1000.r.coords
 
-stop=$(echo $Line | awk '{print $4}')
+NUCMER parsing: grep tig00000335 wAna.LGT.max.1000.r.coords
+REPEATMASKER parsing: grep tig00000335 dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta.out
+```
 
-if [ "$stop" -gt "$start" ]
-then
-    samtools view -c "$BAM" $contig:$start-$stop >> "$LIST"
-else
-    samtools view -c "$BAM" $contig:$stop-$start >> "$LIST"
-fi
 
-pr -mts "$OLD_CSV" "$LIST" > "$NEW_CSV"
+**Retrieve putative transposable element sequences**
+```
+samtools faidx /local/projects-t3/LGT/Dananassae_2020/dana.postassemblyLGT/FREEZE tig00000335:416500-418000 > tig00000335_416500_418000.fasta
+```
 
-done < /local/aberdeen2rw/julie/ben/Dana_transcriptome/hisat2/wAna.LGT.only.filter.samtools.coords
+**Conduct BLAST and Dfam searches of putative transposable elements** 
+```
+https://blast.ncbi.nlm.nih.gov/Blast.cgi
+https://dfam.org/home
 ```
