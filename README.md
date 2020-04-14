@@ -286,6 +286,13 @@ source /local/projects/angiuoli/mugsy/mugsyenv.sh
 source /home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/pythonenv.sh
 /home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/process_maf.sh 432481_433504_CDS.maf
 ```
+
+**LTRharvest**
+
+/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt suffixerator -db /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -indexname /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -tis -suf -lcp -des -ssp -sds -dna
+
+echo "/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrharvest -index /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -seqids yes -tabout no -mindistltr 2000 -overlaps best > /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.out" | qsub -P jdhotopp-lab -l mem_free=10G -cwd -N ltrharvest
+
 ### Transcription of LGT regions <a name="dana.lgt.tx"></a>
 
 **Map short RNA reads** 
