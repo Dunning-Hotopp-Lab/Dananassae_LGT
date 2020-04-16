@@ -291,7 +291,46 @@ source /home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/pythonenv.sh
 
 /local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt suffixerator -db /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -indexname /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -tis -suf -lcp -des -ssp -sds -dna
 
+pipeline 1: LTRharvest + LTRdigest
 echo "/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrharvest -index /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -seqids yes -tabout no -mindistltr 2000 -overlaps best > /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.out" | qsub -P jdhotopp-lab -l mem_free=10G -cwd -N ltrharvest
+
+cp dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.out /local/projects-t3/LGT/Dananassae_2020/dana.repeats/dana.contigs.FREEZE.ltrharvest.mappedids.gff
+
+/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt gff3 -sort dana.contigs.FREEZE.ltrharvest.mappedids.gff > dana.contigs.FREEZE.ltrharvest.mappedids_sorted.gff
+
+/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrdigest -hmms *PAO.hmm -outfileprefix dana.contigs.FREEZE.ltrdigest.mappedids -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdescstart < dana.contigs.FREEZE.ltrharvest.mappedids_sorted.gff > dana.contigs.FREEZE.ltrdigest.mappedids_output.gff
+
+/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt select -rule_files filter_protein_match.rule < dana.contigs.FREEZE.ltrdigest.mappedids_output.gff > dana.contigs.FREEZE.ltrdigest.mappedids.PAOhits.gff
+
+/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt extractfeat -type LTR_retrotransposon -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdesc -coords -seqid dana.contigs.FREEZE.ltrdigest.mappedids.PAOhits.gff > dana.contigs.FREEZE.ltrdigest.mappedids.PAOhits.fasta
+
+outputs 5' and 3' LTRs
+
+/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt extractfeat -type long_terminal_repeat -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdesc -coords -seqid dana.contigs.FREEZE.ltrdigest.mappedids.PAOhits.gff > dana.contigs.FREEZE.ltrdigest.mappedids.PAO.ltrs.fasta
+
+/usr/local/packages/bbtools/reformat.sh in=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.ltrs.fasta out1=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.5ltr.fasta out2=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.3ltr.fasta
+
+split 5' 3' ltrs (interleaved)
+
+rename sequentially 
+awk '/^>/{print ">species_name_scaffold" ++i; next}{print}' < file.fasta > new.fasta.file
+
+split into individual files
+seqtk split
+
+for i in $(seq 1 1342); do needle -asequence dana.ltr_5_$i.fasta -bsequence dana.ltr_3_$i.fasta -gapopen 10 -gapextend 0.5 -aformat3 fasta -outfile dana.ltr.$i.align.fasta; done
+
+for i in $(seq 1 1342); do distmat -sequence dana.ltr.$i.align.fasta -nucmethod 0 -outfile dana.ltr.$i.distmat.out; done
+**nucmethod might want to change to K2P. Do we also want to consider indels? 
+
+for f in *distmat.out; do awk '{print $2}' $f | tail -n 2 | head -n 1 >> distmat.dist.out; done
+
+K2P
+
+pipeline 2: LTRharvest + custom HMMer searches
+
+echo "/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrharvest -index /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltr.db -overlaps all -seed 30 -minlenltr 100 -maxlenltr 2000 -mindistltr 2000 -maxdistltr 15000 -v -gff3 dana.contigs.FREEZE.ltrharvest.allovl.gff -out dana.contigs.FREEZE.ltrharvest.allovl.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -cwd -N ltrharvest.alloverlaps
+
 
 ### Transcription of LGT regions <a name="dana.lgt.tx"></a>
 
