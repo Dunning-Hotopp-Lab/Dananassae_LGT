@@ -292,7 +292,7 @@ source /home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/pythonenv.sh
 /local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt suffixerator -db /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -indexname /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -tis -suf -lcp -des -ssp -sds -dna
 
 pipeline 1: LTRharvest + LTRdigest
-echo "/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrharvest -index /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -seqids yes -tabout no -mindistltr 2000 -overlaps best > /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.out" | qsub -P jdhotopp-lab -l mem_free=10G -cwd -N ltrharvest
+echo "/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrharvest -index /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -seqids yes -tabout no -mindistltr 2000 -maxlenltr 2000 -overlaps best > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.out" | qsub -P jdhotopp-lab -l mem_free=10G -cwd -N ltrharvest
 
 cp dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.out /local/projects-t3/LGT/Dananassae_2020/dana.repeats/dana.contigs.FREEZE.ltrharvest.mappedids.gff
 
