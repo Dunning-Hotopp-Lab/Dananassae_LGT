@@ -110,7 +110,7 @@ nucmer --maxmatch --prefix FREEZE.chrs -l 200 dana.hybrid.80X.arrow.rd2.contigs.
 **QUAST**
 ```
 use python-3.5
-echo "/home/etvedte/scripts/quast-5.0.2/quast.py --large --k-mer-stats --fragmented --threads 12 /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd1/dana.hybrid.80X.contigs.arrow.polished.rn.fasta /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa -r /local/projects-t3/RDBKO/nonIGS_dana/caf1/GCA_000005115.1_dana_caf1_genomic_scaffolds.fna -g /local/projects-t3/RDBKO/nonIGS_dana/caf1/GCA_000005115.1_dana_caf1_genomic.gff -o /local/projects-t3/RDBKO/dana.correctness/quast" | qsub -P jdhotopp-lab -l mem_free=10G -N quast-LG -q threaded.q -pe thread 12 -cwd -V
+echo "/home/etvedte/scripts/quast-5.0.2/quast.py /local/projects-t3/RDBKO/dana.canu/minion.LIG+pb.sqII.hybrid.80X/dana.hybrid.80X.contigs.fasta /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta /local/projects-t3/RDBKO/nonIGS_dana/Miller2018/Dana.pass.minimap2.racon.x3.pilon.x3.fasta -r /local/projects-t3/RDBKO/nonIGS_dana/caf1/GCA_000005115.1_dana_caf1_genomic.redux.fasta --features gene:/local/projects-t3/RDBKO/nonIGS_dana/caf1/GCA_000005115.1_dana_caf1_genomic.gff -o quast_FREEZE -t 24 --large -m 0 --fragmented --split-scaffolds" | qsub -P jdhotopp-lab -l mem_free=20G -q threaded.q -pe thread 24 -N quast.LG -cwd -V
 ```
 
 **KAT**
@@ -277,6 +277,13 @@ xargs samtools faidx /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purge
 ~jdhotopp/bin/residues.pl wAna.LGT.contigs.fasta > wAna.LGT.contigs.residues
 nucmer --maxmatch --prefix wAna.LGT.only /local/aberdeen2rw/julie/Matt_dir/EWANA/references/wAna_v2.complete.pilon.fasta wAna.LGT.contigs.fasta
 /local/projects-t3/RDBKO/scripts/Mchung.LGT.mummerplot.Rmd with residues.txt and LGT.match.delta
+```
+
+**calculate LGT segment length**
+```
+nucmer -l 5000 --prefix LGT.5kbp.segments wAna_v2.complete.pilon.fasta wAna.LGT.contigs.FREEZE.fasta
+show-coords -rl LGT.5kbp.segments.delta > LGT.5kbp.segments.rl.coords
+cat LGT.5kbp.segments.rl.coords | tail -n +6 | awk '{print $8}' | awk '{total = total + $1}END{print "Total LGT segment length = "total}' -
 ```
 
 **Mugsy**
