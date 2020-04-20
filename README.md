@@ -286,6 +286,15 @@ show-coords -rl LGT.5kbp.segments.delta > LGT.5kbp.segments.rl.coords
 cat LGT.5kbp.segments.rl.coords | tail -n +6 | awk '{print $8}' | awk '{total = total + $1}END{print "Total LGT segment length = "total}' -
 ```
 
+**Estimate wAna LGT segment copy number**
+```
+echo "bwa mem -k 23 -t 8 wAna_v2.complete.pilon.fasta /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_ILLUMINA_DATA/RANDD_20190322_K00134_IL100123454_MX29_L004_R1.fastq /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_ILLUMINA_DATA/RANDD_20190322_K00134_IL100123454_MX29_L004_R2.fastq | samtools view -bho wAna_v2.complete.pilon.mapped.illumina_output.bam" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N bwamem -cwd
+for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=$f O=${f%_o*}_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte/" | qsub -P jdhotopp-lab -l mem_free=2G -N SortSam -cwd; done  
+for f in *sorted.bam; do echo "java -Xmx10g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar MarkDuplicates I=$f O=${f%_s*}_dedup.bam M=${f%_s*}_dedup.metrics VALIDATION_STRINGENCY=SILENT AS=true CREATE_INDEX=true REMOVE_DUPLICATES=true" | qsub -P jdhotopp-lab -l mem_free=10G -N MarkDups -cwd; done
+samtools depth -aa -m 100000000 dedup.bam > dedup.depth.txt
+```
+
+
 **Mugsy**
 ```
 source /local/projects/angiuoli/mugsy/mugsyenv.sh
