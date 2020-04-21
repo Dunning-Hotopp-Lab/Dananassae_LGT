@@ -51,7 +51,7 @@ echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/b
 
 **polish with arrow using Sequel II data**
 ```
-echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bin/arrow -j 16 dana.hybrid.80X.contigs.mapped.pb.sqII_sorted.bam -r dana.hybrid.80X.contigs.fasta -o dana.hybrid.80X.contigs.mapped.pb.sqII_variants.gff -o dana.hybrid.80X.contigs.arrow.polished.fasta" | qsub -P jdhotopp-lab -l mem_free=50G -N smrttools.arrow -q threaded.q -pe thread 16 -cwd -V
+echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bin/pbmm2 align Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.fasta /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_PACBIO_DATA/RANDD_20190301_S64018_PL100122512-1_C01.subreads.bam Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.sqII.arrow1_sorted.bam --sort -j 16 -J 8" | qsub -P jdhotopp-lab -l mem_free=50G -N pbmm2.align -q threaded.q -pe thread 16 -cwd -V
 ```
 
 **Map PacBio HiFi data**  
@@ -415,5 +415,12 @@ echo "perl /local/projects-t3/RDBKO/scripts/NOVOPlasty/NOVOPlasty3.7.pl -c /loca
 **Polish with PacBio HiFi**
 ```
 echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bin/pbmm2 align Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.fasta /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_PACBIO_DATA_HiFi/cHI_Dana_2_15_19/PACBIO_DATA/RANDD_20191011_S64018_PL100122512-3_A01.ccs.bam Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.hifi.arrow1_sorted.bam --sort -j 16 -J 8" | qsub -P jdhotopp-lab -l mem_free=50G -N pbmm2.align -q threaded.q -pe thread 16 -cwd -V
+
+echo /usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bin/arrow -j 16 Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.hifi.arrow1_sorted.bam -r Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.fasta -o Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.hifi.arrow1_variants.gff -o Circularized_assembly_1_dana.illumina.mito.arrow1.polished.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -N smrttools.arrow -q threaded.q -pe thread 16 -cwd
+
+--noEvidenceConsensusCall {nocall,reference,lowercasereference}
+                        The consensus base that will be output for sites with
+                        no effective coverage. (default: lowercasereference)
+
 
 ```
