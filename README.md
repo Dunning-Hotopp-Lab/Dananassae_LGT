@@ -17,6 +17,8 @@ The repository contains Supplementary Data for the manuscript, including Tables,
 8. [Characterization of chromosome 4 contigs in D. ananassae](#dana.chr4)
 9. [Characterization of LGT contigs in D. ananassae](#dana.lgt)  
 10. [Transcription of LGT regions](#dana.lgt.tx)  
+11. [NUMT](#dana.numt)
+
 
 ### Pre-processing MinION sequencing data <a name="seq.prep"></a>  
 **Basecalling with guppy**
@@ -401,4 +403,17 @@ samtools faidx /local/projects-t3/LGT/Dananassae_2020/dana.postassemblyLGT/FREEZ
 ```
 https://blast.ncbi.nlm.nih.gov/Blast.cgi
 https://dfam.org/home
+```
+
+### NUMT <a name="dana.numt"></a>
+**De novo assembly of mitochondrial genome using Illumina data** 
+```perl
+echo "perl /local/projects-t3/RDBKO/scripts/NOVOPlasty/NOVOPlasty3.7.pl -c /local/projects-t3/RDBKO/scripts/NOVOPlasty/dana.mito.config.txt" | qsub -P jdhotopp-lab -l mem_free=20G -N NovoPlasty -cwd
+
+```
+
+**Polish with PacBio HiFi**
+```
+echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bin/pbmm2 align Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.fasta /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_PACBIO_DATA_HiFi/cHI_Dana_2_15_19/PACBIO_DATA/RANDD_20191011_S64018_PL100122512-3_A01.ccs.bam Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.hifi.arrow1_sorted.bam --sort -j 16 -J 8" | qsub -P jdhotopp-lab -l mem_free=50G -N pbmm2.align -q threaded.q -pe thread 16 -cwd -V
+
 ```
