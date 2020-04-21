@@ -312,15 +312,16 @@ source /home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/pythonenv.sh
 pipeline 1: LTRharvest + LTRdigest
 echo "/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrharvest -index /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -seqids yes -tabout no -mindistltr 2000 -maxlenltr 2000 -overlaps best > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.out" | qsub -P jdhotopp-lab -l mem_free=10G -cwd -N ltrharvest
 
-cp dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.out /local/projects-t3/LGT/Dananassae_2020/dana.repeats/dana.contigs.FREEZE.ltrharvest.mappedids.gff
+cp dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.out dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.gff
 
-/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt gff3 -sort dana.contigs.FREEZE.ltrharvest.mappedids.gff > dana.contigs.FREEZE.ltrharvest.mappedids_sorted.gff
+/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt gff3 -sort dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.gff > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl_sorted.gff
 
-/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrdigest -hmms *PAO.hmm -outfileprefix dana.contigs.FREEZE.ltrdigest.mappedids -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdescstart < dana.contigs.FREEZE.ltrharvest.mappedids_sorted.gff > dana.contigs.FREEZE.ltrdigest.mappedids_output.gff
+/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrdigest -hmms \*PAO.hmm -outfileprefix dana.FREEZE.bestovl.PAO.mapped -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdescstart < dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl_sorted.gff > dana.FREEZE.bestovl.PAO.mapped.gff
 
-/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt select -rule_files filter_protein_match.rule < dana.contigs.FREEZE.ltrdigest.mappedids_output.gff > dana.contigs.FREEZE.ltrdigest.mappedids.PAOhits.gff
 
-/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt extractfeat -type LTR_retrotransposon -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdesc -coords -seqid dana.contigs.FREEZE.ltrdigest.mappedids.PAOhits.gff > dana.contigs.FREEZE.ltrdigest.mappedids.PAOhits.fasta
+/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt select -rule_files ../filter_protein_match.rule < dana.FREEZE.bestovl.PAO.mapped.gff > dana.FREEZE.bestovl.PAO.matches.gff
+
+/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt extractfeat -type LTR_retrotransposon -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdesc -coords -seqid dana.FREEZE.bestovl.PAO.matches.gff > dana.FREEZE.bestovl.PAO.retrotransposons.fasta
 
 outputs 5' and 3' LTRs
 
