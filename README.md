@@ -254,7 +254,7 @@ perl /local/projects-t3/RDBKO/scripts/Chang2019_frame_depth_new.pl mel_new.out
 ```
 nucmer --maxmatch --prefix chr4 -l 1000 ../Leung2017_chr4_scaffolds.fasta /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta
 show-coords -r chr4.delta > chr4.coords
-cat chr4.coords | tail -n +6 | awk '{print $13}' | sort -n | uniq > chr4.contigs.list
+tail -n +6 chr4.coords | awk '{print $13}' | sort -n | uniq > chr4.contigs.list
 xargs samtools faidx /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta < chr4.contigs.list >> chr4.contigs.fasta
 ```
 
@@ -435,5 +435,17 @@ echo /usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bi
                         The consensus base that will be output for sites with
                         no effective coverage. (default: lowercasereference)
 
+
+```
+
+**Search for numts by alignments between mito genome and nuclear genome
+```
+nucmer -l 50 --prefix dana.numt.firstpass dana.mito.complete.FREEZE.fasta /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta
+
+tail -n +6 dana.numt.firstpass.r.coords | awk '{print $13}' | sort -n | uniq > numt.contigs.list
+
+xargs samtools faidx /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta < numt.contigs.list > numt.contigs.fasta
+
+nucmer -l 50 --prefix dana.numt.finalpass dana.mito.complete.FREEZE.fasta numt.contigs.fasta
 
 ```
