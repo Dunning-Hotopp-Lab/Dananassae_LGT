@@ -1,4 +1,4 @@
-# INSERT TITLE HERE
+# Extreme lateral gene transfer into a fly autosome
 
 Eric S. Tvedte
 
@@ -76,14 +76,18 @@ echo "minimap2 -xmap-pb /local/projects-t3/LGT/Dananassae_2020/dana.postassembly
 awk 'BEGIN{FS=" "}{if(!/>/){print toupper($0)}else{print $1}}' dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fmt.fasta
 ```
 
-**heterochromatin-sensitive assembly
+**heterochromatin-sensitive assembly**
 *Map long reads to genome*
+```
 echo "minimap2 -ax map-ont -t 16 /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta /local/projects-t3/RDBKO/sequencing/RANDD_LIG_Dana_20190405_merged_pass_filtlambda.fastq | samtools view -bho dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.LIG_output.bam" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -cwd -N minimap2
+```
 
 *sort Sam*
+```
 echo -e "java -Xmx20g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.LIG_output.bam O=dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.LIG_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte" | qsub -P jdhotopp-lab -l mem_free=20G -N samsort -cwd
+```
 
-*Generate BED file for non-chromosomal contigs
+*Generate BED file for non-chromosomal contigs*
 ```
 awk -v OFS='\t' {'print $1, $2'} ../dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta.fai > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.genomebed.bed
 
@@ -106,8 +110,9 @@ echo "samtools view -@16 -L nonchr.contig.list -b /local/projects-t3/LGT/Dananas
 ```
 
 **NUCMER**
+```
 nucmer --maxmatch --prefix FREEZE.chrs -l 200 dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta
-
+```
 
 **QUAST**
 ```
@@ -121,11 +126,6 @@ use kat-2.4.0
 echo "kat comp -t 16 -o FREEZE_vs_illuminaR1 /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_ILLUMINA_DATA/RANDD_20190322_K00134_IL100123454_MX29_L004_R1.fastq /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -N kat.comp.illumina -cwd -V
 
 ```
-
-**Rename FASTA**  
-for f in *_contigs.fasta; do awk '/^>/{print ">ecoli_contig" ++i; next}{print}' < $f > ${f%_c*}_contigs_rn.fasta; done
-
-
 
 ### Genome annotation <a name="annotate"></a>  
 **Map short RNA reads** 
@@ -148,8 +148,7 @@ echo -e "/usr/local/packages/minimap2-2.10/bin/minimap2 -ax splice -uf -k14 -t 8
 java -Xmx2g -jar picard.jar SortSam I=mapped.bam O=sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT
 ```
 
-**Find and Mask repeats**
-Build repeat database
+**Build repeat database**
 ```
 echo "/usr/local/packages/repeatmodeler-1.0.11/BuildDatabase -name Dana.repeats.database -engine wublast /local/projects-t3/RDBKO/dana.postassembly/arrow/dana.hybrid.80X.contigs.arrow.polished.fasta" | qsub -P jdhotopp-lab -l mem_free=2G -N RepBuild -cwd
 ```
@@ -164,7 +163,7 @@ echo "/usr/local/packages/repeatmodeler-1.0.11/RepeatModeler -database Dana.repe
 echo "trf dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta 2 7 7 80 10 50 500 -h -m -f -d" | qsub -P jdhotopp-lab -N trf -l mem_free=20G -cwd
 ```
 
-**Soft-masking genome using repeat families
+**Soft-masking genome using repeat families**
 ```
 /usr/local/packages/repeatmasker-4.0.7/RepeatMasker -lib rugiaPahangiNuclearGenome.fa-families.fa /local/aberdeen2rw/julie/JM_dir/PahangiPilonFASTA/Repeats/BrugiaPahangiNuclearGenome.fa
 
@@ -305,46 +304,59 @@ source /home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/pythonenv.sh
 /home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/process_maf.sh 432481_433504_CDS.maf
 ```
 
-**LTRharvest**
-
+**Identifying LTR retrotransposons with LTRharvest and LTRdigest**  
+*Create sequence database* 
+```
 /local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt suffixerator -db /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -indexname /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -tis -suf -lcp -des -ssp -sds -dna
+```
 
-pipeline 1: LTRharvest + LTRdigest
+*Retrieve full-length LTR retrotransposons with LTRharvest*
+```
 echo "/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrharvest -index /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -seqids yes -tabout no -mindistltr 2000 -maxlenltr 2000 -overlaps best > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.out" | qsub -P jdhotopp-lab -l mem_free=10G -cwd -N ltrharvest
+```
 
+*Use family-based HMMs to retrieve BEL/PAO and Gypsy LTR retrotransposons*
+```
 cp dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.out dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.gff
 
 /local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt gff3 -sort dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.gff > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl_sorted.gff
 
 /local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrdigest -hmms \*PAO.hmm -outfileprefix dana.FREEZE.bestovl.PAO.mapped -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdescstart < dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl_sorted.gff > dana.FREEZE.bestovl.PAO.mapped.gff
 
-
 /local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt select -rule_files ../filter_protein_match.rule < dana.FREEZE.bestovl.PAO.mapped.gff > dana.FREEZE.bestovl.PAO.matches.gff
+```
 
+*Extract full-length retrotransposons and 5' + 3' LTR regions*
+```
 /local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt extractfeat -type LTR_retrotransposon -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdesc -coords -seqid dana.FREEZE.bestovl.PAO.matches.gff > dana.FREEZE.bestovl.PAO.retrotransposons.fasta
 
-outputs 5' and 3' LTRs
-
 /local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt extractfeat -type long_terminal_repeat -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdesc -coords -seqid dana.contigs.FREEZE.ltrdigest.mappedids.PAOhits.gff > dana.contigs.FREEZE.ltrdigest.mappedids.PAO.ltrs.fasta
+```
 
+*parse data into usable format*
+```
 /usr/local/packages/bbtools/reformat.sh in=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.ltrs.fasta out1=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.5ltr.fasta out2=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.3ltr.fasta
-
-split 5' 3' ltrs (interleaved)
 
 rename sequentially 
 awk '/^>/{print ">species_name_scaffold" ++i; next}{print}' < file.fasta > new.fasta.file
 
 split into individual files
 seqtk split
+```
 
+*Pairwise alignment of LTRs using Needle*
+```
 for i in $(seq 1 1342); do needle -asequence dana.ltr_5_$i.fasta -bsequence dana.ltr_3_$i.fasta -gapopen 10 -gapextend 0.5 -aformat3 fasta -outfile dana.ltr.$i.align.fasta; done
+```
 
+*Measure pairwise distance values using emboss dismat*
+```
 for i in $(seq 1 1342); do distmat -sequence dana.ltr.$i.align.fasta -nucmethod 0 -outfile dana.ltr.$i.distmat.out; done
 **nucmethod might want to change to K2P. Do we also want to consider indels? 
 
 for f in *distmat.out; do awk '{print $2}' $f | tail -n 2 | head -n 1 >> distmat.dist.out; done
+```
 
-K2P
 
 pipeline 2: LTRharvest + custom HMMer searches
 
