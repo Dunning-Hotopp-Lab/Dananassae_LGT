@@ -321,7 +321,7 @@ cp dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.out dana.hybrid.8
 
 /local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt gff3 -sort dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.gff > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl_sorted.gff
 
-/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrdigest -hmms \*PAO.hmm -outfileprefix dana.FREEZE.bestovl.PAO.mapped -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdescstart < dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl_sorted.gff > dana.FREEZE.bestovl.PAO.mapped.gff
+/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrdigest -hmms ../*PAO.hmm -pdomevalcutoff 1E-20 -outfileprefix dana.FREEZE.bestovl.PAO.mapped.1E-20 -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdescstart < dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl_sorted.gff > dana.FREEZE.bestovl.PAO.mapped.1E-20.gff
 
 /local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt select -rule_files ../filter_protein_match.rule < dana.FREEZE.bestovl.PAO.mapped.gff > dana.FREEZE.bestovl.PAO.matches.gff
 ```
