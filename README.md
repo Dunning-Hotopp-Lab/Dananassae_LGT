@@ -338,23 +338,42 @@ cp dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.out dana.hybrid.8
 /usr/local/packages/bbtools/reformat.sh in=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.ltrs.fasta out1=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.5ltr.fasta out2=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.3ltr.fasta
 
 rename sequentially 
-awk '/^>/{print ">species_name_scaffold" ++i; next}{print}' < file.fasta > new.fasta.file
+awk '/^>/{print ">Gypsy_ltr_5_" ++i; next}{print}' < dana.FREEZE.final.Gypsy.5ltr.fasta > dana.FREEZE.final.Gypsy.5ltr.rn.fasta
+awk '/^>/{print ">Gypsy_ltr_3_" ++i; next}{print}' < dana.FREEZE.final.Gypsy.3ltr.fasta > dana.FREEZE.final.Gypsy.3ltr.rn.fasta
 
 split into individual files
-seqtk split
+seqkit split -i -O Gypsy.5.split dana.FREEZE.final.Gypsy.5ltr.rn.fasta
+seqkit split -i -O Gypsy.3.split dana.FREEZE.final.Gypsy.3ltr.rn.fasta
 ```
 
 *Pairwise alignment of LTRs using Needle*
 ```
-for i in $(seq 1 1342); do needle -asequence dana.ltr_5_$i.fasta -bsequence dana.ltr_3_$i.fasta -gapopen 10 -gapextend 0.5 -aformat3 fasta -outfile dana.ltr.$i.align.fasta; done
+for i in $(seq 1 1548); do needle -asequence Gypsy.5.split/*5_$i.fasta -bsequence Gypsy.3.split/*3_$i.fasta -gapopen 10 -gapextend 0.5 -aformat3 fasta -outfile Gypsy.needle+distmat/dana.Gypsy.$i.align.fasta; done
+
+for i in $(seq 1 765); do needle -asequence PAO.5.split/*5_$i.fasta -bsequence PAO.3.split/*3_$i.fasta -gapopen 10 -gapextend 0.5 -aformat3 fasta -outfile PAO.needle+distmat/dana.PAO.$i.align.fasta; done
+ls 
 ```
 
 *Measure pairwise distance values using emboss dismat*
 ```
-for i in $(seq 1 1342); do distmat -sequence dana.ltr.$i.align.fasta -nucmethod 0 -outfile dana.ltr.$i.distmat.out; done
-**nucmethod might want to change to K2P. Do we also want to consider indels? 
+for i in $(seq 1 1548); do distmat -sequence Gypsy.needle+distmat/dana.Gypsy.$i.align.fasta -nucmethod 0 -outfile Gypsy.needle+distmat/dana.Gypsy.$i.uncorr.distmat.out; done
 
-for f in *distmat.out; do awk '{print $2}' $f | tail -n 2 | head -n 1 >> distmat.dist.out; done
+K2P
+for i in $(seq 1 1548); do distmat -sequence Gypsy.needle+distmat/dana.Gypsy.$i.align.fasta -nucmethod 2 -outfile Gypsy.needle+distmat/dana.Gypsy.$i.k2p.distmat.out; done
+
+cat PAO.needle+distmat/*uncorr.out > PAO.needle+distmat/PAO.distmat.uncorr.all.out
+
+for f in PAO.needle+distmat/*uncorr.distmat.out; do awk '{print $2, $3}' $f | tail -n 2 | head -n 1 >> PAO.all.uncorr.distmat.out; done
+
+
+sort -n -k2.12 PAO.all.uncorr.distmat.out > PAO.all.uncorr.distmat.sorted.out
+
+sort -n -k2.14 Gypsy.all.uncorr.distmat.out > Gypsy.all.uncorr.distmat.sorted.out
+
+paste <(grep '>' dana.FREEZE.final.PAO.5ltr.fasta ) <(grep '>' dana.FREEZE.final.PAO.3ltr.fasta ) <(grep '>' dana.FREEZE.final.PAO.5ltr.rn.fasta) <(awk '{print $1}' PAO.needle+distmat/PAO.all.uncorr.distmat.sorted.out) <(awk '{print $1}' PAO.needle+distmat/PAO.all.k2p.distmat.sorted.out) | column -t -o $'\t' | sed 's|>||g' | sed 's| ||g' > PAO.needle+distmat/PAO.all.final.distmat.out
+
+paste <(grep '>' dana.FREEZE.final.Gypsy.5ltr.fasta ) <(grep '>' dana.FREEZE.final.Gypsy.3ltr.fasta ) <(grep '>' dana.FREEZE.final.Gypsy.5ltr.rn.fasta) <(awk '{print $1}' Gypsy.needle+distmat/Gypsy.all.uncorr.distmat.sorted.out) <(awk '{print $1}' Gypsy.needle+distmat/Gypsy.all.k2p.distmat.sorted.out) | column -t | sed 's/>//g' > Gypsy.needle+distmat/Gypsy.all.final.distmat.out
+
 ```
 
 
