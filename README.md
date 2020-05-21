@@ -161,6 +161,12 @@ echo "/usr/local/packages/repeatmodeler-1.0.11/RepeatModeler -database Dana.repe
 **TRF**
 ```
 echo "trf dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta 2 7 7 80 10 50 500 -h -m -f -d" | qsub -P jdhotopp-lab -N trf -l mem_free=20G -cwd
+
+samtools faidx dana.qm.merged.FREEZE.fasta
+awk -v OFS='\t' {'print $1, $2'} dana.qm.merged.FREEZE.fasta.fai > dana.qm.merged.FREEZE.genomebed.bed
+bedtools makewindows -w 100000 -g dana.qm.merged.FREEZE.genomebed.bed > dana.qm.merged.FREEZE.100kbpwindows.bed
+bedtools nuc -fi trf.masked.fasta -bed dana.qm.merged.FREEZE.100kbpwindows.bed > dana.qm.merged.bednuc.out
+
 ```
 
 **Soft-masking genome using repeat families**
