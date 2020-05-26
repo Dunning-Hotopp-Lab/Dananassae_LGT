@@ -443,6 +443,13 @@ https://blast.ncbi.nlm.nih.gov/Blast.cgi
 https://dfam.org/home
 ```
 
+**Salmon**
+```
+grep "^>" ../dana.qm.merged.FREEZE.fasta | cut -d " " -f 1 > decoys.txt
+sed -i.bak -e 's/>//g' decoys.txt
+cat augustus.hints.codingseq ../dana.qm.merged.FREEZE.fasta > transcripts+genome.fasta 
+/local/projects-t3/LGT/Dananassae_2020/scripts/salmon-latest_linux_x86_64/bin/salmon index -t transcripts+genome.fasta -d decoys.txt -i salmon_index -k 25 
+
 ### NUMT <a name="dana.numt"></a>
 **De novo assembly of mitochondrial genome using Illumina data** 
 ```perl
