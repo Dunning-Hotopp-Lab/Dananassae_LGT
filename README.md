@@ -169,6 +169,14 @@ bedtools nuc -fi trf.masked.fasta -bed dana.qm.merged.FREEZE.100kbpwindows.bed >
 
 ```
 
+kseek parse TRF
+```
+```
+fuzznuc: search for locations of enriched kmers, putative centromere repeats
+```
+fuzznuc -pattern @sample2.pa --complement -pmismatch 2  -sequence /local/projects-t3/LGT/Dananassae_2020/dana.quickmerge/flye+canu.FREEZE.custom.params/pilon.long.bases/dana.assembly.FREEZE.plusMITO.6.1.20.fasta -rformat2 gff -outfile sample2.gff
+```
+
 **Soft-masking genome using repeat families**
 ```
 /usr/local/packages/repeatmasker-4.0.7/RepeatMasker -lib rugiaPahangiNuclearGenome.fa-families.fa /local/aberdeen2rw/julie/JM_dir/PahangiPilonFASTA/Repeats/BrugiaPahangiNuclearGenome.fa
