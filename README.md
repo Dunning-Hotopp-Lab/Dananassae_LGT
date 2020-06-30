@@ -172,11 +172,19 @@ bedtools nuc -fi trf.masked.fasta -bed dana.qm.merged.FREEZE.100kbpwindows.bed >
 
 kseek parse TRF
 ```
+perl /local/projects-t3/LGT/Dananassae_2020/scripts/k-seek/TRF_collapse.pl dana.assembly.FREEZE.plusMITO.6.22.20.fasta.2.7.7.80.10.50.500.dat > dana.assembly.FREEZE.plusMITO.6.22.20.TRF.collapse.fasta
+/usr/local/packages/bbtools/readlength.sh in=dana.assembly.FREEZE.plusMITO.6.22.20.TRF.collapse.fasta bin=1 max=1000 out=dana.assembly.FREEZE.plusMITO.6.22.20.TRF.collapse.lengthstats.txt
+grep -v '#' dana.assembly.FREEZE.plusMITO.6.22.20.TRF.collapse.lengthstats.txt > dana.assembly.FREEZE.plusMITO.6.22.20.TRF.collapse.lengthstats.final.txt
+Rscript
 ```
 fuzznuc: search for locations of enriched kmers, putative centromere repeats
 ```
 fuzznuc -pattern @sample2.pa --complement -pmismatch 2  -sequence /local/projects-t3/LGT/Dananassae_2020/dana.quickmerge/flye+canu.FREEZE.custom.params/pilon.long.bases/dana.assembly.FREEZE.plusMITO.6.1.20.fasta -rformat2 gff -outfile sample2.gff
 ```
+
+cent/tel RT annotation
+blastn -query CentTel.RTs.fasta -db /local/projects-t3/LGT/Dananassae_2020/dana.quickmerge/flye+canu.FREEZE.custom.params/pilon.long.bases/purge_haplotigs/dana.assembly.FREEZE.plusMITO.6.22.20.fasta -perc_identity 75 -evalue 1e-20 -outfmt '6 sseqid sstart send qseqid' -out dana.assembly.FREEZE.plusMITO.6.22.20.CentTel.RTs.blast.out
+
 
 **Soft-masking genome using repeat families**
 ```
