@@ -318,7 +318,14 @@ for f in *sorted.bam; do echo "java -Xmx10g -jar /usr/local/packages/picard-tool
 samtools depth -aa -m 100000000 dedup.bam > dedup.depth.txt
 ```
 
-
+**Read support for individual LGT regions (sliding window bed)**
+```
+for f in dana.assembly.FREEZE.plusMITO.6.22.20.mapped*sorted.bam; do echo "bamCoverage -p 4 -b $f -of bedgraph -o ${f%_s*}_sorted.depth.bed" | qsub -P jdhotopp-lab -N bamCov -l mem_free=10G -q threaded.q -pe thread 4 -cwd -V; done
+```
+**Read support for individual LGT regions (read visualization)**
+```
+echo "bedtools intersect -a dana.assembly.FREEZE.plusMITO.6.22.20.mapped.SQII_sorted.bam -b test.intervals.bed -F 1 > test.result.bam" | qsub -P jdhotopp-lab -l mem_free=10G -N bed.INT -cwd
+```
 **Mugsy**
 ```
 source /local/projects/angiuoli/mugsy/mugsyenv.sh
