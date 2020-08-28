@@ -192,7 +192,7 @@ blastn -query CentTel.RTs.fasta -db /local/projects-t3/LGT/Dananassae_2020/dana.
 
 echo "/usr/local/packages/repeatmasker-4.0.7/RepeatMasker -xsmall -pa 24 -engine wublast -a -lib Dana.repeats.database-families.fa dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 24 -N RepeatMasker -cwd
 
-echo "/usr/local/packages/repeatmasker-4.0.7/RepeatMasker -xsmall -nolow -s -no_is -norna -gccalc -pa 24 -engine wublast -a -lib /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/Dmel.Dfam3.0.families.new.fa dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 24 -N RepeatMasker -cwd
+echo "/usr/local/packages/repeatmasker-4.0.7/RepeatMasker -xsmall -nolow -s -no_is -norna -pa 24 -engine wublast -a -lib /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/Dmel.Dfam3.0.families.new.fa dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 24 -N RepeatMasker -cwd
 ```
 
 **Genome annotation using BRAKER**
