@@ -342,7 +342,7 @@ source /home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/pythonenv.sh
 
 *Retrieve full-length LTR retrotransposons with LTRharvest*
 ```
-echo "/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrharvest -index /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -seqids yes -tabout no -mindistltr 2000 -maxlenltr 2000 -overlaps best > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.out" | qsub -P jdhotopp-lab -l mem_free=10G -cwd -N ltrharvest
+/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt suffixerator -db chr4.contigs.fasta -indexname chr4.contigs.fasta -tis -suf -lcp -des -ssp -sds -dna     /local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrharvest -index chr4.contigs.fasta -seqids yes -tabout no -seed 76 -minlenltr 116 -maxlenltr 800 -mindistltr 2280 -maxdistltr 8773 -similar 91 -xdrop 7 -overlaps best > chr4.contigs.ltrharvest.bestovl.out
 ```
 
 *Use family-based HMMs to retrieve BEL/PAO and Gypsy LTR retrotransposons*
