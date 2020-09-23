@@ -382,6 +382,10 @@ for i in $(seq 1 1548); do needle -asequence Gypsy.5.split/*5_$i.fasta -bsequenc
 
 for i in $(seq 1 765); do needle -asequence PAO.5.split/*5_$i.fasta -bsequence PAO.3.split/*3_$i.fasta -gapopen 10 -gapextend 0.5 -aformat3 fasta -outfile PAO.needle+distmat/dana.PAO.$i.align.fasta; done
 ls 
+
+for f in *fasta; do /usr/local/packages/gblocks/Gblocks $f -t=d -e=-g.fa -b1=2 -b3=1 -p=n ; done
+rename fasta-g.fa gblocks.fasta *fa
+for f in *gblocks.fasta; do sed -i 's/ //g' $f; done
 ```
 
 *Measure pairwise distance values using emboss dismat*
