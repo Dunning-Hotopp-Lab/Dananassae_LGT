@@ -371,6 +371,9 @@ rename sequentially
 awk '/^>/{print ">Gypsy_ltr_5_" ++i; next}{print}' < dana.FREEZE.final.Gypsy.5ltr.fasta > dana.FREEZE.final.Gypsy.5ltr.rn.fasta
 awk '/^>/{print ">Gypsy_ltr_3_" ++i; next}{print}' < dana.FREEZE.final.Gypsy.3ltr.fasta > dana.FREEZE.final.Gypsy.3ltr.rn.fasta
 
+trim sequences?
+seqkit subseq -r 4:-4 dana.all.contigs.bestovl.BELPAO.5ltr.rn.fasta > dana.all.contigs.bestovl.BELPAO.5ltr.rn.trim.fasta
+
 split into individual files
 seqkit split -i -O Gypsy.5.split dana.FREEZE.final.Gypsy.5ltr.rn.fasta
 seqkit split -i -O Gypsy.3.split dana.FREEZE.final.Gypsy.3ltr.rn.fasta
