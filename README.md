@@ -517,3 +517,9 @@ nucmer -l 50 --prefix dana.numt.finalpass dana.mito.complete.FREEZE.fasta numt.c
 fastq-dump --split-files SRA.accession
 
 for f in *_1.fastq; do echo "java -Xmx10g -jar /usr/local/packages/trimmomatic/trimmomatic-0.38.jar PE -threads 8 $f ${f%_1*}_2.fastq ${f%_1*}_paired_1.fastq ${f%_1*}_unpaired_1.fastq ${f%_1*}_paired_2.fastq ${f%_1*}_unpaired_2.fastq ILLUMINACLIP:2:30:10:5 LEADING:3 TRAILING:3 MINLEN:70 SLIDINGWINDOW:4:15" | qsub -P jdhotopp-lab -l mem_free=10G -N trimmomatic -q threaded.q -pe thread 8 -cwd; done
+
+for f in *paired_1.fastq; do /usr/local/packages/bbtools/reformat.sh in1=$f in2=${f%_1*}_2.fastq out=${f%_1*}_interleaved.fastq; done
+
+use deviate
+
+echo "deviaTE --threads 12 --input_fq /local/projects-t3/LGT/Dananassae_2020/sequencing/Dana_strains_WGS/SRR2127162_paired_interleaved.fastq --read_type phred+33 --library /local/projects-t3/LGT/Dananassae_2020/dana.repeats/DAn.repbase.fasta --families ALL --single_copy_genes /local/projects-t3/LGT/Dananassae_2020/dana.repeats/FREEZE.08.03.20/dana_strains_deviaTE/dana.spo11.exons.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 12 -V -N deviaTE -cwd
