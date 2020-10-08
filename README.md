@@ -512,3 +512,8 @@ xargs samtools faidx /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/ar
 nucmer -l 50 --prefix dana.numt.finalpass dana.mito.complete.FREEZE.fasta numt.contigs.fasta
 
 ```
+
+**Validating TE content in different D. ananassae strains**
+fastq-dump --split-files SRA.accession
+
+for f in *_1.fastq; do echo "java -Xmx10g -jar /usr/local/packages/trimmomatic/trimmomatic-0.38.jar PE -threads 8 $f ${f%_1*}_2.fastq ${f%_1*}_paired_1.fastq ${f%_1*}_unpaired_1.fastq ${f%_1*}_paired_2.fastq ${f%_1*}_unpaired_2.fastq ILLUMINACLIP:2:30:10:5 LEADING:3 TRAILING:3 MINLEN:70 SLIDINGWINDOW:4:15" | qsub -P jdhotopp-lab -l mem_free=10G -N trimmomatic -q threaded.q -pe thread 8 -cwd; done
