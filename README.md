@@ -522,4 +522,6 @@ for f in *paired_1.fastq; do /usr/local/packages/bbtools/reformat.sh in1=$f in2=
 
 use deviate
 
+bwa index /local/projects-t3/LGT/Dananassae_2020/dana.repeats/DAn.repbase.fasta
+
 echo "deviaTE --threads 12 --input_fq /local/projects-t3/LGT/Dananassae_2020/sequencing/Dana_strains_WGS/SRR2127162_paired_interleaved.fastq --read_type phred+33 --library /local/projects-t3/LGT/Dananassae_2020/dana.repeats/DAn.repbase.fasta --families ALL --single_copy_genes /local/projects-t3/LGT/Dananassae_2020/dana.repeats/FREEZE.08.03.20/dana_strains_deviaTE/dana.spo11.exons.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 12 -V -N deviaTE -cwd
