@@ -10,9 +10,9 @@ The repository contains Supplementary Data for the manuscript, including Tables,
 1. [Pre-processing sequencing data](#seq.prep)
 2. [Genome assembly](#assemble)
 3. [Post-assembly processing](#post)
-4. [Summary statistics for D. ananassae genome assembly](#sumstats)
-5. [BUSCO analysis](#busco)
-6. [Anchoring assembly contigs](#anchor)  
+4. [Anchoring assembly contigs](#anchor)  
+5. [Genome annotation](#annotate)
+6. [Summary statistics for D. ananassae genome assembly](#sumstats)
 7. [Nuwt analysis](#nuwt)  
 8. [Numt analysis](#numt)
 9. [LTR retrotransposon analysis](#ltr)  
@@ -50,9 +50,10 @@ echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/b
 sed 's/|arrow//g' dana.pb.sqII.contigs.polish.rd1.fasta > dana.pb.sqII.contigs.polish.rd1.rn.fasta
 ```
 
-**Merge Canu and Flye assemblies with Quickmerge**  
+**Merge Canu and Flye assemblies with Quickmerge** 
+```
 merge_wrapper.py canu_assembly.fasta flye_assembly.fasta -l 2000000 -ml 10000
-
+```
 **Polish merged genome**
 ```
 pbmm2 align merged.genome.fasta pb.sequelII.subreads.bam merged.genome.mapped.pb.sequelII_sorted.bam --sort -j 16 -J 8
@@ -65,41 +66,89 @@ pilon-1.22.jar --threads 16 --genome merged.genome.polish.rd1.fasta --output dan
 ```
 **Purge haplotigs from assembly**
 ```
+minimap2 -ax map-pb -t 16 dana.genome.final.polish.fasta pb.sequelII.fasta.gz | samtools sort -o merged.genome.mapped.pb.sequelII_sorted.bam  
 
-purge_haplotigs hist -b aligned.bam  -g genome.fasta  [ -t threads
+purge_haplotigs hist -b merged.genome.mapped.pb.sequelII_sorted.bam -g dana.genome.final.polish.fasta -t 16  
+purge_haplotigs cov -i merged.genome.mapped.pb.sequelII_sorted.bam.gencov -l 15 -m 150 -h 600 -o pb.sequelII.coverage.stats.csv  
+purge_haplotigs purge -g dana.genome.final.polish.fasta -c pb.sequelII.coverage.stats.csv
 
-echo "minimap2 -xmap-pb /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.fasta /local/projects-t3/RDBKO/sequencing/Dana.Hawaii.pbSequelII.raw.fastq.gz | gzip -c - > dana.hybrid.80X.arrow.rd2.mappedsqII.paf.gz" | qsub -P jdhotopp-lab -l mem_free=10G -N minimap2 -cwd
-
-/local/projects-t3/RDBKO/scripts/purge_dups/bin/split_fa /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.fasta > /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.split
-
-/home/etvedte/scripts/purge_dups/bin/pbcstat dana.hybrid.80X.contigs.arrow.polished.mappedhifi.paf.gz
-/home/etvedte/scripts/purge_dups/bin/calcuts PB.stat > cutoffs 2> calcuts.log
-/home/etvedte/scripts/purge_dups/scripts/hist_plot.py PB.stat hist.out.pdf
+blastn -query dana.genome.final.polish.fasta -db nt -outfmt ’6 qseqid staxids bitscore std’ -max_target_seqs 10 -max_hsps 1 -evalue 1e-25 > merged.genome.polish.blast.out  
+blobtools create -i dana.genome.final.polish.fasta -b merged.genome.mapped.pb.sequelII_sorted.bam -t merged.genome.polish.blast.out -o dana.sequelII.blobplot
+blobtools view -i dana.sequelII.blobplot.blobDB.json -o dana.sequelII.blobplot.view
+blobtools plot -i dana.sequelII.blobplot.blobDB.json -o dana.sequelII.blobplot.plot
 ```
 
-**Convert bases to upper case**
-*By default arrow outputs regions with no consensus as lower case, i.e. 'acgt'. In order to properly annotate repetitive regions as lower case, all bases must be converted to upper case. Note that this could have been accomplished in arrow using the parameter --noEvidenceConsensusCall reference* 
+### 4. Anchoring assembly contigs <a name="anchor"></a>
+**Chromosome X, 2, 3**
+*Initial BLAST search to determine contig orientation*
 ```
-awk 'BEGIN{FS=" "}{if(!/>/){print toupper($0)}else{print $1}}' dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fmt.fasta
+makeblastdb dana.genome.final.polish+purge.fasta -out dana.genome.final.polish+purge.fasta -dbtype nucl -parse_seqids
+blastn -query Schaeffer2008.map.loci.fasta -db dana.genome.final.polish+purge.fasta -max_target_seqs 10 -max_hsps 10 -outfmt 6 > initial.blast.out
+```
+*Extract matching contigs, reverse complement if necessary*
+```
+samtools faidx dana.genome.final.polish+purge.fasta fwd.contig.name >> dana.chrX23.fasta
+samtools faidx -i dana.genome.final.polish+purge.fasta rev.contig.name >> dana.chrX23.fasta
+```
+*Final BLAST search, using matched contigs as database and custom BLAST output*
+```
+makeblastdb dana.chrX23.fasta -out dana.chrX23.fasta -dbtype nucl -parse_seqids
+blastn -query Schaeffer2008.map.loci.fasta -db dana.chrX23.fasta -max_target_seqs 1 -max_hsps 1 -outfmt "6 qseqid sseqid pident length sstart send evalue slen" > dana.chrX23.Schaeffer2008.map.loci.blast.out
+```
+*Add remaining contigs to final assembly*
+```
+awk '{print $2}' dana.UMIGS.FREEZE.Schaeffer2008.map.loci.blast.out | sort -n | uniq > dana.UMIGS.FREEZE.chrX23.list
+seqkit grep -v -f dana.UMIGS.FREEZE.chrX23.list dana.genome.final.polish+purge.fasta > dana.UMIGS.nonchrX23.fasta
+cat dana.chrX23.fasta dana.UMIGS.nonchrX23.fasta > dana.UMIGS.FREEZE.fasta
+```
+**Chromosome Y**  
+*Map male and female short reads*
+```
+seqkit subsample male 1
+seqkit subsample male 2
+seqkit subsample female 1
+seqkit subsample female 2
+
+bwa index dana.UMIGS.FREEZE.fasta
+bwa mem -k 23 -t 8 dana.UMIGS.FREEZE.fasta female.R1.fq.gz female.R2.fq.gz
+bwa mem -k 23 -t 8  dana.UMIGS.FREEZE.fasta male.R1.fq.gz male.R2.fq.gz
+
+for f in /local/projects/JULIE/Dana*/ILLUMINA_DATA/*R1_trimmed.fastq.gz; do echo "bwa mem -k 23 -t 8 /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta $f ${f%_R*}_R2_trimmed.fastq.gz | samtools view -bho /local/projects-t3/RDBKO/dana.chrY/FREEZE/$(basename ${f%_R*})_output.bam" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N bwamem -cwd ; done
+```
+*Sort BAM and remove duplicates*
+```
+for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=$f O=${f%_o*}_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte/" | qsub -P jdhotopp-lab -l mem_free=2G -N SortSam -cwd; done  
+for f in *sorted.bam; do echo "java -Xmx10g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar MarkDuplicates I=$f O=${f%_s*}_dedup.bam M=${f%_s*}_dedup.metrics VALIDATION_STRINGENCY=SILENT AS=true CREATE_INDEX=true REMOVE_DUPLICATES=true" | qsub -P jdhotopp-lab -l mem_free=10G -N MarkDups -cwd; done
+```
+*Calculate sequencing depth, filter reads with MAPQ < 10*
+```
+samtools depth -Q 10 mel_f_new.bam mel_m_new.bam > mel_new.out
+```
+*Determine average and median female/male depth in 10kb windows (see Chang and Larracuente, 2018)* 
+```perl
+female
+JULIE_20190729_K00134_IL100134730_MX83_L001
+JULIE_20190729_K00134_IL100134731_MX84_L001
+male
+JULIE_20190702_K00134_IL100134728_MX81_L008
+JULIE_20190702_K00134_IL100134729_MX82_L008
+
+perl /local/projects-t3/RDBKO/scripts/Chang2019_frame_depth_new.pl mel_new.out
 ```
 
-
-
-**QUAST**
+**Chromosome 4**
 ```
-use python-3.5
-echo "/home/etvedte/scripts/quast-5.0.2/quast.py /local/projects-t3/LGT/Dananassae_2020/dana.quickmerge/flye+canu.FREEZE.custom.params/pilon.long.bases/purge_haplotigs/dana.assembly.FREEZE.plusMITO.6.22.20.fasta /local/projects-t3/RDBKO/nonIGS_dana/Miller2018/Dana.pass.minimap2.racon.x3.pilon.x3.fasta /local/projects-t3/RDBKO/nonIGS_dana/caf1/GCA_000005115.1_dana_caf1_genomic.redux.fasta -r /local/projects-t3/RDBKO/nonIGS_dana/caf1/GCA_000005115.1_dana_caf1_genomic.redux.fasta --features gene:/local/projects-t3/RDBKO/nonIGS_dana/caf1/GCA_000005115.1_dana_caf1_genomic.gff -o quast_FREEZE.6.22.20.Miller.caf1 -t 24 --large -m 0 --fragmented --split-scaffolds --conserved-genes-finding" | qsub -P jdhotopp-lab -l mem_free=20G -q threaded.q -pe thread 24 -N quast.LG -cwd -V
+nucmer --maxmatch -l 1000 --prefix chr4.firstpass Leung2017.chr4.scaffolds.fasta dana.UMIGS.FREEZE.fasta  
+show-coords -r chr4.firstpass.delta > chr4.firstpass.coords  
+tail -n +6 chr4.firstpass.coords | awk '{print $13}' | sort -n | uniq > chr4.contigs.list  
+seqkit grep -f chr4.contigs.list dana.UMIGS.FREEZE.fasta > dana.chr4.fasta
 
-```
-
-**KAT**
-```
-use kat-2.4.0
-echo "kat comp -t 16 -o FREEZE_vs_illuminaR1 /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_ILLUMINA_DATA/RANDD_20190322_K00134_IL100123454_MX29_L004_R1.fastq /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -N kat.comp.illumina -cwd -V
-
+nucmer --maxmatch -l 1000 --prefix chr4.finalpass Leung2017.chr4.scaffolds.fasta dana.chr4.fasta
+show-coords -r chr4.finalpass.delta > chr4.finalpass.coords  
+mummerplot --color --postscript --prefix chr4.finalpass chr4.finalpass.delta  
 ```
 
-### Genome annotation <a name="annotate"></a>  
+### 5. Genome annotation <a name="annotate"></a>  
 **Map short RNA reads** 
 ```
 hisat2-build polished.contigs.fasta polished.contigs.hisat2  
@@ -128,17 +177,6 @@ echo "/usr/local/packages/repeatmodeler-1.0.11/BuildDatabase -name Dana.repeats.
 **Classify repeat families**
 ```
 echo "/usr/local/packages/repeatmodeler-1.0.11/RepeatModeler -database Dana.repeats.database" | qsub -P jdhotopp-lab -l mem_free=2G -N RepeatModeler -cwd
-```
-
-**TRF**
-```
-echo "trf dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta 2 7 7 80 10 50 500 -h -m -f -d" | qsub -P jdhotopp-lab -N trf -l mem_free=20G -cwd
-
-samtools faidx dana.qm.merged.FREEZE.fasta
-awk -v OFS='\t' {'print $1, $2'} dana.qm.merged.FREEZE.fasta.fai > dana.qm.merged.FREEZE.genomebed.bed
-bedtools makewindows -w 100000 -g dana.qm.merged.FREEZE.genomebed.bed > dana.qm.merged.FREEZE.100kbpwindows.bed
-bedtools nuc -fi trf.masked.fasta -bed dana.qm.merged.FREEZE.100kbpwindows.bed > dana.qm.merged.bednuc.out
-
 ```
 
 kseek parse TRF
@@ -171,94 +209,36 @@ echo "/usr/local/packages/repeatmasker-4.0.7/RepeatMasker -xsmall -nolow -s -no_
 braker.pl --species=DrosophilaAnanassae --softmasking --genome=contigs.softmasked.fasta --bam=shortRNAreads_sorted.bam, longRNAreads_sorted.bam --prot_seq=dmelanogaster.uniprot.proteins.fasta --etpmode --prg=gth --gth2traingenes --cores=8
 ```
 
-### BUSCO analysis <a name="busco"></a>
+
+### 6. Summary statistics for D. ananassae genome assembly <a name="sumstats"></a>
+**QUAST**
+```
+quast.py dana.UMIGS.FREEZE.fasta Dana.pass.minimap2.racon.x3.pilon.x3.fasta -r GCA_000005115.1_dana_caf1_genomic.fasta --features gene:GCA_000005115.1_dana_caf1_genomic.gff -o quast_UMIGS.Miller2018.caf1 -t 24 --large -m 0 --fragmented --split-scaffolds --conserved-genes-finding
+```
+
+**BUSCO**
 ```python
-python run_BUSCO.py -f -c 8 -t /local/scratch/etvedte/tmp -i polished.contigs.fasta -o outdir_prefix -l metazoa_odb9 -m geno
+python run_BUSCO.py -f -c 8 -t /tmp/folder -i dana.UMIGS.FREEZE.fasta -o dana.UMIGS.FREEZE -l arthropoda_odb9 -m geno
+python run_BUSCO.py -f -c 8 -t /tmp/folder -i Dana.pass.minimap2.racon.x3.pilon.x3.fasta -o Miller2018 -l arthropoda_odb9 -m geno
 ```
 
-### Characterization of euchromatic regions of D. ananassae <a name="dana.chrom.map"></a>
-**Initial BLAST search to determine contig orientation**
+**TRF**
 ```
-makeblastdb -in polished.contigs.fasta -out polished.contigs.fasta -dbtype nucl -parse_seqids
-blastn -query mapping_loci.fasta -db polished.contigs.fasta -max_target_seqs 10 -max_hsps 10 -outfmt 6 > initial.blast.out
-```
-
-**Extract matching contigs, reverse complement if necessary**
-```
-samtools faidx polished.contigs.fasta fwd.contig.name >> polished.contigs.correct.fasta
-samtools faidx -i polished.contigs.fasta rev.contig.name >> polished.contigs.correct.fasta
+trf dana.UMIGS.FREEZE.fasta 2 7 7 80 10 50 500 -h -m -f -d  
+samtools faidx dana.UMIGS.FREEZE.fasta  
+awk -v OFS='\t' {'print $1, $2'} dana.UMIGS.FREEZE.fasta.fai > dana.UMIGS.FREEZE.genomebed.bed  
+bedtools makewindows -w 100000 -g dana.UMIGS.FREEZE.genomebed.bed > dana.UMIGS.FREEZE.100kbpwindows.bed
+bedtools nuc -fi dana.UMIGS.FREEZE.trf.masked.fasta -bed dana.UMIGS.FREEZE.100kbpwindows.bed > dana.UMIGS.FREEZE.bednuc.out
+grep -v '#' dana.assembly.FREEZE.plusMITO.08.03.20.bednuc.out |  awk '{print $1"\t"$2"\t"$3"\t"$10/$12}' > dana.assembly.FREEZE.plusMITO.08.03.20.bednuc.final.out
 ```
 
-**Final BLAST search, using matched contigs as database and custom BLAST output**
+**BLAST for centromere/telomere retrotransposons**
 ```
-makeblastdb -in polished.contigs.correct.fasta -out polished.contigs.correct.fasta -dbtype nucl -parse_seqids
-blastn -query mapping_loci.fasta -db polished.contigs.correct.fasta -max_target_seqs 1 -max_hsps 1 -outfmt "6 qseqid sseqid pident length sstart send evalue slen" > final.blast.out
-```
-
-**Visualization of contigs, including locations of identified euchromatic loci**
-```
-contigs.Rmd using data.txt
+makeblastdb dana.UMIGS.FREEZE.fasta -out dana.UMIGS.FREEZE.fasta -dbtype nucl -parse_seqids
+blastn -query dana.cent.tel.RTs.fasta -db dana.UMIGS.FREEZE.fasta -outfmt ’6 qseqid staxids bitscore std’ -perc_identity 75 -evalue 1e-20 > dana.cent.tel.RTs.blast.out
 ```
 
-### Characterization of Y contigs in D. ananassae <a name="dana.y"></a>  
-**Index reference genome**
-```
-bwa index /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta
-bwa mem -k 23 -t 8 female.R1.fq.gz female.R2.fq.gz
-bwa mem -k 23 -t 8 male.R1.fq.gz male.R2.fq.gz
-
-for f in /local/projects/JULIE/Dana*/ILLUMINA_DATA/*R1_trimmed.fastq.gz; do echo "bwa mem -k 23 -t 8 /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta $f ${f%_R*}_R2_trimmed.fastq.gz | samtools view -bho /local/projects-t3/RDBKO/dana.chrY/FREEZE/$(basename ${f%_R*})_output.bam" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N bwamem -cwd ; done
-```
-
-**Map female short reads**
-``` 
-echo -e "bwa mem -t 8 -k 23 /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa /local/projects/JULIE/Dana_cHi_female_2/ILLUMINA_DATA/JULIE_20190729_K00134_IL100134730_MX83_L001_R1_trimmed.fastq.gz /local/projects/JULIE/Dana_cHi_female_2/ILLUMINA_DATA/JULIE_20190729_K00134_IL100134730_MX83_L001_R2_trimmed.fastq.gz | samtools view -bho /local/projects-t3/RDBKO/dana.chrY/purged.contigs.mapped.cHi_female2_output.bam -" | qsub -P jdhotopp-lab -l mem_free=50G -N BWAMEM -q threaded.q -pe thread 8 -cwd
-```
-
-**Map male short reads**
-``` 
-echo -e "bwa mem -t 8 -k 23 /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa /local/projects/JULIE/Dana_cHi_male_2/ILLUMINA_DATA/JULIE_20190702_K00134_IL100134728_MX81_L008_R1_trimmed.fastq.gz /local/projects/JULIE/Dana_cHi_male_2/ILLUMINA_DATA/JULIE_20190702_K00134_IL100134728_MX81_L008_R2_trimmed.fastq.gz | samtools view -bho /local/projects-t3/RDBKO/dana.chrY/purged.contigs.mapped.cHi_male2_output.bam -" | qsub -P jdhotopp-lab -l mem_free=50G -N BWAMEM -q threaded.q -pe thread 8 -cwd
-```
-
-**Sort BAM and remove duplicates**
-```
-for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=$f O=${f%_o*}_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte/" | qsub -P jdhotopp-lab -l mem_free=2G -N SortSam -cwd; done  
-for f in *sorted.bam; do echo "java -Xmx10g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar MarkDuplicates I=$f O=${f%_s*}_dedup.bam M=${f%_s*}_dedup.metrics VALIDATION_STRINGENCY=SILENT AS=true CREATE_INDEX=true REMOVE_DUPLICATES=true" | qsub -P jdhotopp-lab -l mem_free=10G -N MarkDups -cwd; done
-```
-
-**Calculate sequencing depth, filter reads with MAPQ < 10**
-```
-samtools depth -Q 10 mel_f_new.bam mel_m_new.bam > mel_new.out
-```
-
-**Determine average and median female/male depth in 10kb windows (see Chang and Larracuente, 2018)** 
-```perl
-female
-JULIE_20190729_K00134_IL100134730_MX83_L001
-JULIE_20190729_K00134_IL100134731_MX84_L001
-male
-JULIE_20190702_K00134_IL100134728_MX81_L008
-JULIE_20190702_K00134_IL100134729_MX82_L008
-
-perl /local/projects-t3/RDBKO/scripts/Chang2019_frame_depth_new.pl mel_new.out
-```
-
-### Characterization of chromosome 4 contigs in D. ananassae <a name="dana.chr4"></a>
-**Nucmer alignment to identify LGT contigs
-```
-nucmer --maxmatch --prefix chr4 -l 1000 ../Leung2017_chr4_scaffolds.fasta /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta
-show-coords -r chr4.delta > chr4.coords
-tail -n +6 chr4.coords | awk '{print $13}' | sort -n | uniq > chr4.contigs.list
-xargs samtools faidx /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta < chr4.contigs.list >> chr4.contigs.fasta
-```
-
-**Nucmer aligment to chromosome 4 contigs**
-```
-nucmer --maxmatch --prefix chr4.match -l 1000 ../Leung2017_chr4_scaffolds.fasta chr4.contigs.fasta
-mummerplot --prefix chr4.match --color --postscript chr4.match.delta
-```
-
-### Characterization of LGT contigs in D. ananassae <a name="dana.lgt"></a>
+### 7. Nuwt analysis <a name="nuwt"></a>
 **Nucmer alignment to identify LGT contigs
 ```
 nucmer --maxmatch --prefix wAna.LGT /local/aberdeen2rw/julie/Matt_dir/EWANA/references/wAna_v2.complete.pilon.fasta /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa
