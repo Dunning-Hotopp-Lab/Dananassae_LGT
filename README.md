@@ -7,31 +7,27 @@ Eric S. Tvedte
 The repository contains Supplementary Data for the manuscript, including Tables, Figures, and Files.
 
 ## Table of Contents
-1. [Pre-processing MinION sequencing data](#seq.prep)
+1. [Pre-processing sequencing data](#seq.prep)
 2. [Genome assembly](#assemble)
 3. [Post-assembly processing](#post)
-4. [Genome annotation](#annotate)
+4. [Summary statistics for D. ananassae genome assembly](#sumstats)
 5. [BUSCO analysis](#busco)
-6. [Characterization of euchromatic regions of D. ananassae](#dana.chrom.map)  
-7. [Characterization of Y contigs in D. ananassae](#dana.y)  
-8. [Characterization of chromosome 4 contigs in D. ananassae](#dana.chr4)
-9. [Characterization of LGT contigs in D. ananassae](#dana.lgt)  
-10. [Transcription of LGT regions](#dana.lgt.tx)  
-11. [NUMT](#dana.numt)
+6. [Anchoring assembly contigs](#anchor)  
+7. [Nuwt analysis](#nuwt)  
+8. [Numt analysis](#numt)
+9. [LTR retrotransposon analysis](#ltr)  
+10. [Transcription of LGT regions](#lgt.tx)  
 
 
-### Pre-processing MinION sequencing data <a name="seq.prep"></a>  
-**Basecalling with guppy**
+4. [Genome annotation](#annotate)
+
+### 1. Pre-processing sequencing data <a name="seq.prep"></a>  
+**ONT basecalling with guppy**
 ```
 /usr/local/packages/guppy-3.1.5/bin/guppy_basecaller --input_path fast5_dir --save_path output_dir --config dna_r9.4.1_450bps_fast.cfg --fast5_out --qscore_filtering --min_qscore 7 --records_per_fastq 10000000 --num_callers 8 --cpu_threads_per_caller 4  
 ```
 
-**Filter lambda from sequencing data**
-```
-zcat minion.LIG.raw.fastq.gz | NanoLyse --reference lambda.DCS.fasta | gzip > minion.LIG.filter.lambda.fastq.gz
-```
-
-### Genome assembly <a name="assemble"></a>  
+### 2. Genome assembly <a name="assemble"></a>  
 **Canu**  
 ```
 canu -p output.prefix -d output.dir genomeSize=240m corOutCoverage=80 gridEngineThreadsOption="-pe thread THREADS" gridEngineMemoryOption="-l mem_free=MEMORY" gridOptions="-P jdhotopp-lab -q threaded.q" -pacbio-raw raw.pacbio.reads.fastq.gz -nanopore-raw minion.LIG.filter.lambda.fastq.gz
@@ -42,25 +38,36 @@ canu -p output.prefix -d output.dir genomeSize=240m corOutCoverage=80 gridEngine
 echo -e "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/packages/gcc/lib64\nexport PYTHONPATH=$PYTHONPATH:/usr/local/packages/flye-2.4.2/lib/python2.7/site-packages\n/usr/local/packages/flye-2.4.2/bin/flye -g 240m -t 24 -o /local/projects-t3/RDBKO/dana.flye/ --asm-coverage 60 --pacbio-raw /local/projects-t3/RDBKO/sequencing/Dana.Hawaii.pbSequelII.raw.fastq.gz
 ```
 
-### Post-assembly processing <a name="post"></a>
-**Map PacBio Sequel II data**  
+### 3. Post-assembly processing <a name="post"></a>
+**Polish Canu assembly with Arrow using Sequel II CLR data**
 ```
 use python-3.5
+
 echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bin/pbmm2 align dana.hybrid.contigs.fasta /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_PACBIO_DATA/RANDD_20190301_S64018_PL100122512-1_C01.subreads.bam dana.hybrid.80X.contigs.mapped.pb.sqII_sorted.bam --sort -j 16 -J 8" | qsub -P jdhotopp-lab -l mem_free=50G -N pbmm2.align -q threaded.q -pe thread 16 -cwd -V
+
+echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bin/arrow dana.pb.sqII.contigs.arrow1_sorted.bam -r dana.pb.sqII.contigs.fasta -o dana.pb.sqII.contigs.variants.gff -o dana.pb.sqII.contigs.polish.rd1.fasta -j 16 --noEvidenceConsensusCall reference" | qsub -P jdhotopp-lab -l mem_free=20G -q threaded.q -pe thread 16 -N arrow -cwd -V
+
+sed 's/|arrow//g' dana.pb.sqII.contigs.polish.rd1.fasta > dana.pb.sqII.contigs.polish.rd1.rn.fasta
 ```
 
-**polish with arrow using Sequel II data**
+**Merge Canu and Flye assemblies with Quickmerge**  
+merge_wrapper.py canu_assembly.fasta flye_assembly.fasta -l 2000000 -ml 10000
+
+**Polish merged genome**
 ```
-echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bin/pbmm2 align Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.fasta /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_PACBIO_DATA/RANDD_20190301_S64018_PL100122512-1_C01.subreads.bam Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.sqII.arrow1_sorted.bam --sort -j 16 -J 8" | qsub -P jdhotopp-lab -l mem_free=50G -N pbmm2.align -q threaded.q -pe thread 16 -cwd -V
+pbmm2 align merged.genome.fasta pb.sequelII.subreads.bam merged.genome.mapped.pb.sequelII_sorted.bam --sort -j 16 -J 8
+
+arrow merged.genome.mapped.pb.sequelII_sorted.bam -r merged.genome.fasta -o merged.genome.pb.sequelII.variants.gff -o merged.genome.polish.rd1.fasta -j 16 --noEvidenceConsensusCall reference  
+
+minimap2 -ax map-pb -t 16 merged.genome.fasta pb.CCS.fasta.gz | samtools sort -o merged.genome.mapped.pb.CCS_sorted.bam  
+
+pilon-1.22.jar --threads 16 --genome merged.genome.polish.rd1.fasta --output dana.genome.final.polish --unpaired merged.genome.mapped.pb.CCS_sorted.bam --changes --vcf --fix bases --mindepth 5 --K 85 --minmq 0 --minqual 35
+```
+**Purge haplotigs from assembly**
 ```
 
-**Map PacBio HiFi data**  
+purge_haplotigs hist -b aligned.bam  -g genome.fasta  [ -t threads
 
-
-**polish with FreeBayes**
-
-**purge haplotigs from assembly**
-```
 echo "minimap2 -xmap-pb /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.fasta /local/projects-t3/RDBKO/sequencing/Dana.Hawaii.pbSequelII.raw.fastq.gz | gzip -c - > dana.hybrid.80X.arrow.rd2.mappedsqII.paf.gz" | qsub -P jdhotopp-lab -l mem_free=10G -N minimap2 -cwd
 
 /local/projects-t3/RDBKO/scripts/purge_dups/bin/split_fa /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.fasta > /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.split
@@ -76,43 +83,7 @@ echo "minimap2 -xmap-pb /local/projects-t3/LGT/Dananassae_2020/dana.postassembly
 awk 'BEGIN{FS=" "}{if(!/>/){print toupper($0)}else{print $1}}' dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fmt.fasta
 ```
 
-**heterochromatin-sensitive assembly**
-*Map long reads to genome*
-```
-echo "minimap2 -ax map-ont -t 16 /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta /local/projects-t3/RDBKO/sequencing/RANDD_LIG_Dana_20190405_merged_pass_filtlambda.fastq | samtools view -bho dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.LIG_output.bam" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -cwd -N minimap2
-```
 
-*sort Sam*
-```
-echo -e "java -Xmx20g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.LIG_output.bam O=dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.LIG_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte" | qsub -P jdhotopp-lab -l mem_free=20G -N samsort -cwd
-```
-
-*Generate BED file for non-chromosomal contigs*
-```
-awk -v OFS='\t' {'print $1, $2'} ../dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta.fai > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.genomebed.bed
-
-bedtools makewindows -g dana.hybrid.80X.arrow.rd2.contigs.FREEZE.genomebed.bed -w 10000000000 > dana.hybrid.80X.arrow.rd2.contigs.FREEZE.bed
-```
-*Retrieve reads mapping to unlocalized contigs and unmapped*
-```
-echo "samtools view -@16 -L dana.hybrid.80X.arrow.rd2.contigs.FREEZE.bed -b /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.sqII_sorted.bam | samtools fasta - > dana.pb.heterochromatin.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -cwd -N sam.fasta
-echo "samtools view -@16 -f 4 /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.sqII_sorted.bam | samtools fasta - > dana.pb.sqII.unmapped.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -cwd -N sam.fasta
-
-```
-**or BEDtools**
-```
-echo "samtools view -@16 -L nonchr.contig.list -b /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.mapped.sqII_sorted.bam | bedtools bamtofastq -i - -fq dana.pb.sqII.heterochromatin.fastq" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 16 -cwd -N bam.to.fastq
-```
-
-**assembly**
-```
-/usr/local/packages/canu-1.8/bin/canu -p dana.het -d /local/projects-t3/LGT/Dananassae_2020/dana.het.assembly/pb+minion.fasta genomeSize=85m corOutCoverage=100 corMinCoverage=0 stopOnReadQuality=false MhapSensitivity=normal gridEngineThreadsOption="-pe thread THREADS" gridEngineMemoryOption="-l mem_free=MEMORY" gridOptions="-P jdhotopp-lab -q threaded.q" -pacbio-raw /local/projects-t3/LGT/Dananassae_2020/dana.het.assembly/dana.pb.sqII.het.unmap.fasta -nanopore-raw /local/projects-t3/LGT/Dananassae_2020/dana.het.assembly/dana.minion.LIG.het.unmapped.fasta
-```
-
-**NUCMER**
-```
-nucmer --maxmatch --prefix FREEZE.chrs -l 200 dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta
-```
 
 **QUAST**
 ```
