@@ -4,8 +4,6 @@ Eric S. Tvedte
 
 2020-10-15
 
-The repository contains Supplementary Data for the manuscript, including Tables, Figures, and Files.
-
 ## Table of Contents
 1. [Pre-processing sequencing data](#seq.prep)
 2. [Genome assembly](#assemble)
@@ -220,6 +218,7 @@ quast.py dana.UMIGS.FREEZE.fasta Dana.pass.minimap2.racon.x3.pilon.x3.fasta -r G
 ```python
 python run_BUSCO.py -f -c 8 -t /tmp/folder -i dana.UMIGS.FREEZE.fasta -o dana.UMIGS.FREEZE -l arthropoda_odb9 -m geno
 python run_BUSCO.py -f -c 8 -t /tmp/folder -i Dana.pass.minimap2.racon.x3.pilon.x3.fasta -o Miller2018 -l arthropoda_odb9 -m geno
+
 ```
 
 **TRF**
