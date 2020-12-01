@@ -451,15 +451,18 @@ echo /usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bi
 
 ```
 
+##NUMT analysis
 **Search for numts by alignments between mito genome and nuclear genome
 ```
-nucmer -l 50 --prefix dana.numt.firstpass dana.mito.complete.FREEZE.fasta /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta
+nucmer -l 100 --maxmatch --prefix dana.numt.firstpass dana.mito.rotate.FREEZE.fasta /local/projects-t3/LGT/Dananassae_2020/dana.quickmerge/flye+canu.FREEZE.custom.params/pilon.long.bases/purge_haplotigs/dana.assembly.FREEZE.plusMITO.08.03.20.fasta
 
-tail -n +6 dana.numt.firstpass.r.coords | awk '{print $13}' | sort -n | uniq > numt.contigs.list
+show-coords -r dana.numt.firstpass.delta > dana.numt.firstpass.coords  
 
-xargs samtools faidx /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta < numt.contigs.list > numt.contigs.fasta
+tail -n +6 dana.numt.firstpass.coords | awk '{print $13}' | sort -n | uniq > dana.numt.contigs.list
 
-nucmer -l 50 --prefix dana.numt.finalpass dana.mito.complete.FREEZE.fasta numt.contigs.fasta
+samtools faidx /local/projects-t3/LGT/Dananassae_2020/dana.quickmerge/flye+canu.FREEZE.custom.params/pilon.long.bases/purge_haplotigs/dana.assembly.FREEZE.plusMITO.08.03.20.fasta -i contig_239:5130000-5170000 > dana.numt.contig_239.region.fasta
+
+nucmer -l 100 --maxmatch --prefix dana.numt.finalpass dana.mito.rotate.FREEZE.fasta dana.numt.contig_239.region.fasta
 
 ```
 
