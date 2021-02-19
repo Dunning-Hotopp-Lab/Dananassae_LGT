@@ -31,6 +31,10 @@ Eric S. Tvedte
 canu -p output.prefix -d output.dir genomeSize=240m corOutCoverage=80 gridEngineThreadsOption="-pe thread THREADS" gridEngineMemoryOption="-l mem_free=MEMORY" gridOptions="-P jdhotopp-lab -q threaded.q" -pacbio-raw raw.pacbio.reads.fastq.gz -nanopore-raw minion.LIG.filter.lambda.fastq.gz
 ```
 
+canu -p 'PB.CLR.het' 'genomeSize=60m' 'corMinCoverage=0' 'corOutCoverage=100' 'ovlMerSize=31' 'correctedErrorRate=0.035' 'utgOvlErrorRate=0.065' 'trimReadsCoverage=2' 'trimReadsOverlap=500' 'gridEngineThreadsOption=-pe thread THREADS' 'gridEngineMemoryOption=-l mem_free=MEMORY' 'gridOptions=-P jdhotopp-lab -q threaded.q' -pacbio '/autofs/projects-t3/LGT/Dananassae_2020/dana.nuwt/het.assembly/het.plus.unmapped.PB.CLR.fasta' canuIteration=0
+
+
+
 **Flye** 
 ```
 echo -e "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/packages/gcc/lib64\nexport PYTHONPATH=$PYTHONPATH:/usr/local/packages/flye-2.4.2/lib/python2.7/site-packages\n/usr/local/packages/flye-2.4.2/bin/flye -g 240m -t 24 -o /local/projects-t3/RDBKO/dana.flye/ --asm-coverage 60 --pacbio-raw /local/projects-t3/RDBKO/sequencing/Dana.Hawaii.pbSequelII.raw.fastq.gz
