@@ -317,6 +317,11 @@ cp dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.out dana.hybrid.8
 /local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt extractfeat -type long_terminal_repeat -seqfile /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta -matchdesc -coords -seqid dana.contigs.FREEZE.ltrdigest.mappedids.PAOhits.gff > dana.contigs.FREEZE.ltrdigest.mappedids.PAO.ltrs.fasta
 ```
 
+*Following manual inspection, remove duplicated records when retrotransposons score better than 1E-20 for both BEL/PAO and Ty3/Gypsy*
+```
+seqkit grep -v -f BELPAO.ltr.remove.list UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.fasta > UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.fasta
+seqkit grep -v -f Ty3Gyspy.ltr.remove.list UMIGS.FREEZE.2021.ltrharvest.bestovl.Ty3Gypsy.ltrs.fasta > UMIGS.FREEZE.2021.ltrharvest.bestovl.Ty3Gypsy.ltrs.final.fasta
+```
 *parse data into usable format*
 ```
 /usr/local/packages/bbtools/reformat.sh in=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.ltrs.fasta out1=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.5ltr.fasta out2=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.3ltr.fasta
@@ -359,7 +364,7 @@ for f in PAO.needle+distmat/*uncorr.distmat.out; do awk '{print $2, $3}' $f | ta
 
 sort -n -k2.12 PAO.all.uncorr.distmat.out > PAO.all.uncorr.distmat.sorted.out
 
-sort -n -k2.14 Gypsy.all.uncorr.distmat.out > Gypsy.all.uncorr.distmat.sorted.out
+sort -n -k2.17 UMIGS.Ty3Gypsy.all.uncorr.distmat.out > UMIGS.Ty3Gypsy.all.uncorr.distmat.sorted.out
 
 paste <(grep '>' dana.FREEZE.final.PAO.5ltr.fasta ) <(grep '>' dana.FREEZE.final.PAO.3ltr.fasta ) <(grep '>' dana.FREEZE.final.PAO.5ltr.rn.fasta) <(awk '{print $1}' PAO.needle+distmat/PAO.all.uncorr.distmat.sorted.out) <(awk '{print $1}' PAO.needle+distmat/PAO.all.k2p.distmat.sorted.out) | column -t -o $'\t' | sed 's|>||g' | sed 's| ||g' > PAO.needle+distmat/PAO.all.final.distmat.out
 
