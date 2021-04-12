@@ -280,13 +280,6 @@ for f in dana.assembly.FREEZE.plusMITO.6.22.20.mapped*sorted.bam; do echo "bamCo
 ```
 echo "bedtools intersect -a dana.assembly.FREEZE.plusMITO.6.22.20.mapped.SQII_sorted.bam -b test.intervals.bed -F 1 > test.result.bam" | qsub -P jdhotopp-lab -l mem_free=10G -N bed.INT -cwd
 ```
-**Mugsy**
-```
-source /local/projects/angiuoli/mugsy/mugsyenv.sh
-/local/projects/angiuoli/mugsy/mugsy --directory /local/projects-t3/RDBKO/dana.LGT/80X.polished.rd1/mugsy --prefix ecoli 1.ecoli.fasta 2.ecoli.fasta 3.ecoli.fasta
-source /home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/pythonenv.sh
-/home/jdhotopp/bin/jsahl_mugsy_to_tree_dir/process_maf.sh 432481_433504_CDS.maf
-```
 
 **Identifying LTR retrotransposons with LTRharvest and LTRdigest**  
 *Create sequence database* 
@@ -322,7 +315,7 @@ cp dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltrharvest.bestovl.out dana.hybrid.8
 seqkit grep -v -f BELPAO.ltr.remove.list UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.fasta > UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.fasta
 seqkit grep -v -f Ty3Gyspy.ltr.remove.list UMIGS.FREEZE.2021.ltrharvest.bestovl.Ty3Gypsy.ltrs.fasta > UMIGS.FREEZE.2021.ltrharvest.bestovl.Ty3Gypsy.ltrs.final.fasta
 ```
-*parse data into usable format*
+*Calculate pairwise distances:Ty3/Gypsy*
 ```
 /usr/local/packages/bbtools/reformat.sh in=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.ltrs.fasta out1=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.5ltr.fasta out2=dana.contigs.FREEZE.ltrdigest.mappedids.PAO.3ltr.fasta
 
@@ -342,7 +335,7 @@ seqkit split -i -O Gypsy.3.split dana.FREEZE.final.Gypsy.3ltr.rn.fasta
 ```
 for i in $(seq 1 1548); do needle -asequence Gypsy.5.split/*5_$i.fasta -bsequence Gypsy.3.split/*3_$i.fasta -gapopen 10 -gapextend 0.5 -aformat3 fasta -outfile Gypsy.needle+distmat/dana.Gypsy.$i.align.fasta; done
 
-for i in $(seq 1 765); do needle -asequence PAO.5.split/*5_$i.fasta -bsequence PAO.3.split/*3_$i.fasta -gapopen 10 -gapextend 0.5 -aformat3 fasta -outfile PAO.needle+distmat/dana.PAO.$i.align.fasta; done
+
 ls 
 
 for f in *fasta; do /usr/local/packages/gblocks/Gblocks $f -t=d -e=-g.fa -b1=2 -b3=1 -p=n ; done
@@ -357,9 +350,10 @@ for i in $(seq 1 1548); do distmat -sequence Gypsy.needle+distmat/dana.Gypsy.$i.
 K2P
 for i in $(seq 1 1548); do distmat -sequence Gypsy.needle+distmat/dana.Gypsy.$i.align.fasta -nucmethod 2 -outfile Gypsy.needle+distmat/dana.Gypsy.$i.k2p.distmat.out; done
 
-cat PAO.needle+distmat/*uncorr.out > PAO.needle+distmat/PAO.distmat.uncorr.all.out
+#cat PAO.needle+distmat/*uncorr.out > PAO.needle+distmat/PAO.distmat.uncorr.all.out
 
 for f in PAO.needle+distmat/*uncorr.distmat.out; do awk '{print $2, $3}' $f | tail -n 2 | head -n 1 >> PAO.all.uncorr.distmat.out; done
+
 
 
 sort -n -k2.12 PAO.all.uncorr.distmat.out > PAO.all.uncorr.distmat.sorted.out
@@ -371,12 +365,30 @@ paste <(grep '>' dana.FREEZE.final.PAO.5ltr.fasta ) <(grep '>' dana.FREEZE.final
 paste <(grep '>' dana.FREEZE.final.Gypsy.5ltr.fasta ) <(grep '>' dana.FREEZE.final.Gypsy.3ltr.fasta ) <(grep '>' dana.FREEZE.final.Gypsy.5ltr.rn.fasta) <(awk '{print $1}' Gypsy.needle+distmat/Gypsy.all.uncorr.distmat.sorted.out) <(awk '{print $1}' Gypsy.needle+distmat/Gypsy.all.k2p.distmat.sorted.out) | column -t | sed 's/>//g' > Gypsy.needle+distmat/Gypsy.all.final.distmat.out
 
 ```
-
-
-pipeline 2: LTRharvest + custom HMMer searches
-
-echo "/local/projects-t3/LGT/Dananassae_2020/scripts/genometools-1.5.9/bin/gt ltrharvest -index /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.ltr.db -overlaps all -seed 30 -minlenltr 100 -maxlenltr 2000 -mindistltr 2000 -maxdistltr 15000 -v -gff3 dana.contigs.FREEZE.ltrharvest.allovl.gff -out dana.contigs.FREEZE.ltrharvest.allovl.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -cwd -N ltrharvest.alloverlaps
-
+*Calculate pairwise distances:BEL/PAO*
+```
+#split interleaved LTR file
+/usr/local/packages/bbtools/reformat.sh in=UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.fasta out1=UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.5ltr.fasta out2=UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.3ltr.fasta
+#rename sequentially 
+awk '/^>/{print ">BELPAO_ltr_5_" ++i; next}{print}' < UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.5ltr.fasta > UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.5ltr.rn.fasta
+awk '/^>/{print ">BELPAO_ltr_3_" ++i; next}{print}' < UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.3ltr.fasta > UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.3ltr.rn.fasta
+#split into individual files
+seqkit split -i -O BELPAO.5.split UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.5ltr.rn.fasta
+seqkit split -i -O BELPAO.3.split UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.3ltr.rn.fasta
+#needle
+for i in $(seq 1 942); do needle -asequence BELPAO.5.split/*5_$i.fasta -bsequence BELPAO.3.split/*3_$i.fasta -gapopen 10 -gapextend 0.5 -aformat3 fasta -outfile BELPAO.needle+distmat/UMIGS.BELPAO.$i.align.fasta; done
+#gblocks
+for f in *fasta; do /usr/local/packages/gblocks/Gblocks $f -t=d -e=-g.fa -b1=2 -b3=1 -p=n ; done
+rename fasta-g.fa gblocks.fasta *fa
+for f in *gblocks.fasta; do sed -i 's/ //g' $f; done
+#distmat
+for i in $(seq 1 942); do distmat -sequence BELPAO.needle+distmat/UMIGS.BELPAO.$i.align.fasta -nucmethod 2 -outfile BELPAO.needle+distmat/UMIGS.BELPAO.$i.k2p.distmat.out; done
+#concatenate and sort output
+for f in BELPAO.needle+distmat/*distmat.out; do awk '{print $2, $3}' $f | tail -n 2 | head -n 1 >> UMIGS.BELPAO.all.k2p.distmat.out; done
+sort -n -k2.15 UMIGS.BELPAO.all.k2p.distmat.out > UMIGS.BELPAO.all.k2p.distmat.sorted.out
+#build output table
+paste <(grep '>' UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.5ltr.fasta ) <(grep '>' UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.3ltr.fasta  ) <(grep '>' UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.5ltr.rn.fasta) <(awk '{print $1}' BELPAO.needle+distmat/UMIGS.BELPAO.all.k2p.distmat.sorted.out) | column -t | sed 's/>//g' > BELPAO.needle+distmat/UMIGS.BELPAO.all.k2p.distmat.final.out
+```
 
 ### Transcription of LGT regions <a name="dana.lgt.tx"></a>
 
