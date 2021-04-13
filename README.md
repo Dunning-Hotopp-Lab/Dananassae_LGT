@@ -391,7 +391,13 @@ paste <(grep '>' UMIGS.FREEZE.2021.ltrharvest.bestovl.BELPAO.ltrs.final.5ltr.fas
 ```
 
 ### Transcription of LGT regions <a name="dana.lgt.tx"></a>
-
+**Map Wolbachia-cured datasets to wAna using salmon**
+```
+grep "^>" wAna.genome.fasta | cut -d " " -f 1 > decoys.txt
+sed -i.bak -e 's/>//g' decoys.txt
+cat augustus.hints.codingseq ../dana.qm.merged.FREEZE.fasta > transcripts+genome.fasta 
+/local/projects-t3/LGT/Dananassae_2020/scripts/salmon-latest_linux_x86_64/bin/salmon index -t transcripts+genome.fasta -d decoys.txt -i salmon_index -k 25 
+```
 **Map short RNA reads** 
 ```
 hisat2-build polished.contigs.fasta polished.contigs.hisat2  
@@ -446,12 +452,28 @@ https://dfam.org/home
 ```
 
 **Salmon**
+*Download files*
 ```
-grep "^>" ../dana.qm.merged.FREEZE.fasta | cut -d " " -f 1 > decoys.txt
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/008/033/215/GCA_008033215.1_ASM803321v1/GCA_008033215.1_ASM803321v1_cds_from_genomic.fna.gz
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/008/033/215/GCA_008033215.1_ASM803321v1/GCA_008033215.1_ASM803321v1_genomic.fna.gz 
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/008/033/215/GCA_008033215.1_ASM803321v1/GCA_008033215.1_ASM803321v1_genomic.gff.gz
+gunzip *gz
+```
+*Construct salmon index with wAna genome decoy*
+```
+grep "^>" GCA_008033215.1_ASM803321v1_genomic.fna | cut -d " " -f 1 > decoys.txt
 sed -i.bak -e 's/>//g' decoys.txt
-cat augustus.hints.codingseq ../dana.qm.merged.FREEZE.fasta > transcripts+genome.fasta 
-/local/projects-t3/LGT/Dananassae_2020/scripts/salmon-latest_linux_x86_64/bin/salmon index -t transcripts+genome.fasta -d decoys.txt -i salmon_index -k 25 
-
+cat GCA_008033215.1_ASM803321v1_cds_from_genomic.fna GCA_008033215.1_ASM803321v1_genomic.fna > wAna.cds+genome.fasta 
+salmon index -t wAna.cds+genome.fasta -d decoys.txt -i salmon_index -k 25 
+```
+*Map single end reads*
+```
+salmon quant -i salmon_index -l A -r read_1.fq --validateMappings --gcBias -o output_dir -p 8
+```
+*Map paired end reads*
+```
+salmon quant -i salmon_index -l A -1 read_1.fq -2 read_2.fq --validateMappings --gcBias -o output_dir -p 8
+```
 ### NUMT <a name="dana.numt"></a>
 **De novo assembly of mitochondrial genome using Illumina data** 
 ```perl
