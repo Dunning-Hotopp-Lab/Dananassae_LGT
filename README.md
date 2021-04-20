@@ -397,7 +397,7 @@ grep "^>" wAna.genome.fasta | cut -d " " -f 1 > decoys.txt
 sed -i.bak -e 's/>//g' decoys.txt
 cat augustus.hints.codingseq ../dana.qm.merged.FREEZE.fasta > transcripts+genome.fasta 
 /local/projects-t3/LGT/Dananassae_2020/scripts/salmon-latest_linux_x86_64/bin/salmon index -t transcripts+genome.fasta -d decoys.txt -i salmon_index -k 25
-for f in /local/projects-t3/LGT/Dananassae_2020/sequencing/Dana_UMIGS_Hawaii_RNASeq/*dedup_R1.fastq.gz; do echo "/home/etvedte/scripts/salmon-latest_linux_x86_64/bin/salmon quant -i salmon_index -l ISR -1 $f -2 ${f%_R*}_R2.fastq.gz --validateMappings --gcBias -o /local/projects-t3/LGT/Dananassae_2020/dana.tx/wAna-based/salmon_output/cHI_UMIGS_stranded -p 8 --writeMappings | samtools view -bhSo /local/projects-t3/LGT/Dananassae_2020/dana.tx/wAna-based/salmon_output/cHI_UMIGS_dedup_stranded_output.bam" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 8 -cwd -N salmon_quant_cHI; done
+for f in /local/projects-t3/LGT/Dananassae_2020/sequencing/Dana_UMIGS_Hawaii_RNASeq/*dedup_R1.fastq.gz; do echo "/home/etvedte/scripts/salmon-latest_linux_x86_64/bin/salmon quant -i salmon_index -l ISR -1 $f -2 ${f%_R*}_R2.fastq.gz --validateMappings --gcBias --minAssignedFrags 1 -o /local/projects-t3/LGT/Dananassae_2020/dana.tx/wAna-based/salmon_output/cHI_UMIGS_stranded -p 8 --writeMappings | samtools view -bhSo /local/projects-t3/LGT/Dananassae_2020/dana.tx/wAna-based/salmon_output/cHI_UMIGS_dedup_stranded_output.bam" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 8 -cwd -N salmon_quant_cHI; done
 
 ```
 **Map short RNA reads** 
