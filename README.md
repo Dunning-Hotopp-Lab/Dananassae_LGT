@@ -4,162 +4,75 @@ Eric S. Tvedte
 
 2020-10-15
 
+
+
 ## Table of Contents
-1. [Pre-processing sequencing data](#seq.prep)
-2. [Genome assembly](#assemble)
-3. [Post-assembly processing](#post)
-4. [Anchoring assembly contigs](#anchor)  
-5. [Genome annotation](#annotate)
-6. [Summary statistics for D. ananassae genome assembly](#sumstats)
-7. [Nuwt analysis](#nuwt)  
+1. [Download D. ananassae and wAna datasets] (#dl)
+2. [Nuwt analysis](#nuwt)  
 8. [Numt analysis](#numt)
 9. [LTR retrotransposon analysis](#ltr)  
-10. [Transcription of LGT regions](#lgt.tx)  
+10. [Transcription of LGT regions](#lgt.tx) 
+11. [Data visualization] (#viz) data_viz_scripts 
 
-
-4. [Genome annotation](#annotate)
-
-### 1. Pre-processing sequencing data <a name="seq.prep"></a>  
-**ONT basecalling with guppy**
+### 1. Download D. ananassae and wAna datasets <a name="dl"></a>
 ```
-/usr/local/packages/guppy-3.1.5/bin/guppy_basecaller --input_path fast5_dir --save_path output_dir --config dna_r9.4.1_450bps_fast.cfg --fast5_out --qscore_filtering --min_qscore 7 --records_per_fastq 10000000 --num_callers 8 --cpu_threads_per_caller 4  
-```
-
-### 2. Genome assembly <a name="assemble"></a>  
-**Canu**  
-```
-canu -p output.prefix -d output.dir genomeSize=240m corOutCoverage=80 gridEngineThreadsOption="-pe thread THREADS" gridEngineMemoryOption="-l mem_free=MEMORY" gridOptions="-P jdhotopp-lab -q threaded.q" -pacbio-raw raw.pacbio.reads.fastq.gz -nanopore-raw minion.LIG.filter.lambda.fastq.gz
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/008/033/215/GCA_008033215.1_ASM803321v1/GCA_008033215.1_ASM803321v1_genomic.fna.gz
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/008/033/215/GCA_008033215.1_ASM803321v1/GCA_008033215.1_ASM803321v1_gff.gz
+gunzip *.gz  
+D. ananassae PacBio Sequel II assembly available on Figshare https://doi.org/10.25387/g3.14096897
 ```
 
-canu -p 'PB.CLR.het' 'genomeSize=60m' 'corMinCoverage=0' 'corOutCoverage=100' 'ovlMerSize=31' 'correctedErrorRate=0.035' 'utgOvlErrorRate=0.065' 'trimReadsCoverage=2' 'trimReadsOverlap=500' 'gridEngineThreadsOption=-pe thread THREADS' 'gridEngineMemoryOption=-l mem_free=MEMORY' 'gridOptions=-P jdhotopp-lab -q threaded.q' -pacbio '/autofs/projects-t3/LGT/Dananassae_2020/dana.nuwt/het.assembly/het.plus.unmapped.PB.CLR.fasta' canuIteration=0
+### 2. Nuwt analysis <a name="nuwt"></a>
+
+**Identify nuwt contigs**
+```
+mummer/nucmer -l 1000 --prefix nuwt.firstpass GCA_008033215.1_ASM803321v1_genomic.fna Dana.UMIGS.fasta
+mummer/show-coords -rT nuwt.firstpass.delta > nuwt.firstpass.coords
+tail -n +5 nuwt.firstpass.coords | awk '{print $9}' | sort -n | uniq > nuwt.contigs.list
+seqkit grep Dana.UMIGS.fasta -f nuwt.contigs.list > Dana.UMIGS.nuwt.contigs.fasta
+```
+
+**Aligment of wAna to nuwt contigs**
+```
+~jdhotopp/bin/residues.pl Dana.UMIGS.nuwt.contigs.fasta > Dana.UMIGS.nuwt.contigs.residues
+nucmer -l 1000 --prefix nuwt.finalpass GCA_008033215.1_ASM803321v1_genomic.fna Dana.UMIGS.nuwt.contigs.fasta
+mummer/delta-filter -q nuwt.finalpass.delta > nuwt.finalpass.filter
+data_viz_scripts/Dana.LGT.Rmd
+```
+
+**Estimate total nuwt content in D. ananassae**
+```
+mummer/show-coords -rT nuwt.finalpass.filter > nuwt.finalpass.coords
+tail -n +5 nuwt.finalpass.coords | awk '{print $9"\t"$3"\t"$4}' > nuwt.finalpass.bed
+Rscript fixbed.R nuwt.finalpass.bed nuwt.finalpass.fixed.bed
+bedtools coverage -a nuwt.finalpass.fixed.bed -b nuwt.finalpass.fixed.bed -hist | grep 'all' > nuwt.finalpass.fixed.hist #estimated nuwt is 1*1 depth + (1/2)*2 depth, this corrects for small overlapping segments generated using NUCmer
+```
+
+**Estimate nuwt copy number and HiFi sequencing depth**
+```
+tail -n +5 nuwt.finalpass.coords | awk '{print $8"\t"$1-1"\t"$2}' > wAna.finalpass.bed
+touch wAna.genome.bed #enter BED coordinates for whole genome - CP042904.1 0 1401460
+bedtools coverage -a wAna.genome.bed -b wAna.finalpass.bed -d > wAna.genome.NUCmer.cn.bed
+
+minimap2 -ax map-pb -t 16 GCA_008033215.1_ASM803321v1_genomic.fna PB.HiFi.fastq.gz | samtools sort -o GCA_008033215.1_ASM803321v1_mapped_HiFi_sorted.bam  
+samtools depth -a GCA_008033215.1_ASM803321v1_mapped_HiFi_sorted.bam > GCA_008033215.1_ASM803321v1_mapped_HiFi_sorted.depth.txt
+data_viz_scripts/Dana.LGT.Rmd
+```
+
+**Purge_haplotigs: purge/clip potential duplicated assembly sequence**
+```
+minimap2 -t 4 -ax map-pb Dana.UMIGS.fasta PB.HiFi.fastq.gz --secondary=no | samtools sort -m 5G -o aln.bam
+purge_haplotigs hist -b aln.bam -g pilon.fasta -t 4 -d 400
+purge_haplotigs cov -l 5 -m 195 -h 300 -i aln.bam.gencov -j 80 -s 80
+purge_haplotigs purge -g Dana.UMIGS.fasta -b aln.bam -c coverage_stats.csv -d -t 8
+purge_haplotigs clip -p contigs.fasta -h haplotigs.fasta -l 20000 -g 10000 -t 4
+```
+
+**Annotating and dating LTR retrotransposons**
 
 
 
-**Flye** 
-```
-echo -e "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/packages/gcc/lib64\nexport PYTHONPATH=$PYTHONPATH:/usr/local/packages/flye-2.4.2/lib/python2.7/site-packages\n/usr/local/packages/flye-2.4.2/bin/flye -g 240m -t 24 -o /local/projects-t3/RDBKO/dana.flye/ --asm-coverage 60 --pacbio-raw /local/projects-t3/RDBKO/sequencing/Dana.Hawaii.pbSequelII.raw.fastq.gz
-```
 
-### 3. Post-assembly processing <a name="post"></a>
-**Polish Canu assembly with Arrow using Sequel II CLR data**
-```
-use python-3.5
-
-echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bin/pbmm2 align dana.hybrid.contigs.fasta /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_PACBIO_DATA/RANDD_20190301_S64018_PL100122512-1_C01.subreads.bam dana.hybrid.80X.contigs.mapped.pb.sqII_sorted.bam --sort -j 16 -J 8" | qsub -P jdhotopp-lab -l mem_free=50G -N pbmm2.align -q threaded.q -pe thread 16 -cwd -V
-
-echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bin/arrow dana.pb.sqII.contigs.arrow1_sorted.bam -r dana.pb.sqII.contigs.fasta -o dana.pb.sqII.contigs.variants.gff -o dana.pb.sqII.contigs.polish.rd1.fasta -j 16 --noEvidenceConsensusCall reference" | qsub -P jdhotopp-lab -l mem_free=20G -q threaded.q -pe thread 16 -N arrow -cwd -V
-
-sed 's/|arrow//g' dana.pb.sqII.contigs.polish.rd1.fasta > dana.pb.sqII.contigs.polish.rd1.rn.fasta
-```
-
-**Merge Canu and Flye assemblies with Quickmerge** 
-```
-merge_wrapper.py canu_assembly.fasta flye_assembly.fasta -l 2000000 -ml 10000
-```
-**Polish merged genome**
-```
-pbmm2 align merged.genome.fasta pb.sequelII.subreads.bam merged.genome.mapped.pb.sequelII_sorted.bam --sort -j 16 -J 8
-
-arrow merged.genome.mapped.pb.sequelII_sorted.bam -r merged.genome.fasta -o merged.genome.pb.sequelII.variants.gff -o merged.genome.polish.rd1.fasta -j 16 --noEvidenceConsensusCall reference  
-
-minimap2 -ax map-pb -t 16 merged.genome.fasta pb.CCS.fasta.gz | samtools sort -o merged.genome.mapped.pb.CCS_sorted.bam  
-
-pilon-1.22.jar --threads 16 --genome merged.genome.polish.rd1.fasta --output dana.genome.final.polish --unpaired merged.genome.mapped.pb.CCS_sorted.bam --changes --vcf --fix bases --mindepth 5 --K 85 --minmq 0 --minqual 35
-```
-**Purge haplotigs from assembly**
-```
-minimap2 -ax map-pb -t 16 dana.genome.final.polish.fasta pb.sequelII.fasta.gz | samtools sort -o merged.genome.mapped.pb.sequelII_sorted.bam  
-
-purge_haplotigs hist -b merged.genome.mapped.pb.sequelII_sorted.bam -g dana.genome.final.polish.fasta -t 16  
-purge_haplotigs cov -i merged.genome.mapped.pb.sequelII_sorted.bam.gencov -l 15 -m 150 -h 600 -o pb.sequelII.coverage.stats.csv  
-purge_haplotigs purge -g dana.genome.final.polish.fasta -c pb.sequelII.coverage.stats.csv
-
-blastn -query dana.genome.final.polish.fasta -db nt -outfmt ’6 qseqid staxids bitscore std’ -max_target_seqs 10 -max_hsps 1 -evalue 1e-25 > merged.genome.polish.blast.out  
-blobtools create -i dana.genome.final.polish.fasta -b merged.genome.mapped.pb.sequelII_sorted.bam -t merged.genome.polish.blast.out -o dana.sequelII.blobplot
-blobtools view -i dana.sequelII.blobplot.blobDB.json -o dana.sequelII.blobplot.view
-blobtools plot -i dana.sequelII.blobplot.blobDB.json -o dana.sequelII.blobplot.plot
-```
-
-### 4. Anchoring assembly contigs <a name="anchor"></a>
-**Chromosome X, 2, 3**
-*Initial BLAST search to determine contig orientation*
-```
-makeblastdb dana.genome.final.polish+purge.fasta -out dana.genome.final.polish+purge.fasta -dbtype nucl -parse_seqids
-blastn -query Schaeffer2008.map.loci.fasta -db dana.genome.final.polish+purge.fasta -max_target_seqs 10 -max_hsps 10 -outfmt 6 > initial.blast.out
-```
-*Extract matching contigs, reverse complement if necessary*
-```
-samtools faidx dana.genome.final.polish+purge.fasta fwd.contig.name >> dana.chrX23.fasta
-samtools faidx -i dana.genome.final.polish+purge.fasta rev.contig.name >> dana.chrX23.fasta
-```
-*Final BLAST search, using matched contigs as database and custom BLAST output*
-```
-makeblastdb dana.chrX23.fasta -out dana.chrX23.fasta -dbtype nucl -parse_seqids
-blastn -query Schaeffer2008.map.loci.fasta -db dana.chrX23.fasta -max_target_seqs 1 -max_hsps 1 -outfmt "6 qseqid sseqid pident length sstart send evalue slen" > dana.chrX23.Schaeffer2008.map.loci.blast.out
-```
-*Add remaining contigs to final assembly*
-```
-awk '{print $2}' dana.UMIGS.FREEZE.Schaeffer2008.map.loci.blast.out | sort -n | uniq > dana.UMIGS.FREEZE.chrX23.list
-seqkit grep -v -f dana.UMIGS.FREEZE.chrX23.list dana.genome.final.polish+purge.fasta > dana.UMIGS.nonchrX23.fasta
-cat dana.chrX23.fasta dana.UMIGS.nonchrX23.fasta > dana.UMIGS.FREEZE.fasta
-```
-**Chromosome Y**  
-*Map male and female short reads*
-```
-seqkit subsample male 1
-seqkit subsample male 2
-seqkit subsample female 1
-seqkit subsample female 2
-
-bwa index dana.UMIGS.FREEZE.fasta
-bwa mem -k 23 -t 8 dana.UMIGS.FREEZE.fasta female.R1.fq.gz female.R2.fq.gz
-bwa mem -k 23 -t 8  dana.UMIGS.FREEZE.fasta male.R1.fq.gz male.R2.fq.gz
-
-for f in /local/projects/JULIE/Dana*/ILLUMINA_DATA/*R1_trimmed.fastq.gz; do echo "bwa mem -k 23 -t 8 /local/projects-t3/RDBKO/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta $f ${f%_R*}_R2_trimmed.fastq.gz | samtools view -bho /local/projects-t3/RDBKO/dana.chrY/FREEZE/$(basename ${f%_R*})_output.bam" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N bwamem -cwd ; done
-```
-*Sort BAM and remove duplicates*
-```
-for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=$f O=${f%_o*}_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte/" | qsub -P jdhotopp-lab -l mem_free=2G -N SortSam -cwd; done  
-for f in *sorted.bam; do echo "java -Xmx10g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar MarkDuplicates I=$f O=${f%_s*}_dedup.bam M=${f%_s*}_dedup.metrics VALIDATION_STRINGENCY=SILENT AS=true CREATE_INDEX=true REMOVE_DUPLICATES=true" | qsub -P jdhotopp-lab -l mem_free=10G -N MarkDups -cwd; done
-```
-*Calculate sequencing depth, filter reads with MAPQ < 10*
-```
-samtools depth -Q 10 mel_f_new.bam mel_m_new.bam > mel_new.out
-```
-*Determine average and median female/male depth in 10kb windows (see Chang and Larracuente, 2018)* 
-```perl
-female
-JULIE_20190729_K00134_IL100134730_MX83_L001
-JULIE_20190729_K00134_IL100134731_MX84_L001
-male
-JULIE_20190702_K00134_IL100134728_MX81_L008
-JULIE_20190702_K00134_IL100134729_MX82_L008
-
-perl /local/projects-t3/RDBKO/scripts/Chang2019_frame_depth_new.pl mel_new.out
-```
-
-**Chromosome 4**
-```
-nucmer --maxmatch -l 1000 --prefix chr4.firstpass Leung2017.chr4.scaffolds.fasta dana.UMIGS.FREEZE.fasta  
-show-coords -r chr4.firstpass.delta > chr4.firstpass.coords  
-tail -n +6 chr4.firstpass.coords | awk '{print $13}' | sort -n | uniq > chr4.contigs.list  
-seqkit grep -f chr4.contigs.list dana.UMIGS.FREEZE.fasta > dana.chr4.fasta
-
-nucmer --maxmatch -l 1000 --prefix chr4.finalpass Leung2017.chr4.scaffolds.fasta dana.chr4.fasta
-show-coords -r chr4.finalpass.delta > chr4.finalpass.coords  
-mummerplot --color --postscript --prefix chr4.finalpass chr4.finalpass.delta  
-```
-
-### 5. Genome annotation <a name="annotate"></a>  
-**Map short RNA reads** 
-```
-hisat2-build polished.contigs.fasta polished.contigs.hisat2  
-hisat2 -p 8 --max-intronlen 300000 -x polished.contigs.hisat2 -U reads.fastq.gz | samtools view -bho output.bam -  
-
-
-for f in /local/projects-t3/RDBKO/sequencing/Dana_illumina_RNA_SRA/*.fastq; do echo "hisat2 -p 8 --max-intronlen 300000 -x /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.hisat2 -U $f | samtools view -bho /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/$(basename ${f%_1*})_output.bam -" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N hisat2 -cwd; done
-
-```
 
 **Map long RNA reads**
 ```
@@ -242,44 +155,6 @@ blastn -query dana.cent.tel.RTs.fasta -db dana.UMIGS.FREEZE.fasta -outfmt ’6 q
 ```
 
 ### 7. Nuwt analysis <a name="nuwt"></a>
-**Nucmer alignment to identify LGT contigs
-```
-nucmer --maxmatch --prefix wAna.LGT /local/aberdeen2rw/julie/Matt_dir/EWANA/references/wAna_v2.complete.pilon.fasta /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa
-show-coords -r wAna.LGT.delta > wAna.LGT.r.coords
-cat wAna.LGT.r.coords | tail -n +6 | awk '{print $13}' | sort -n | uniq > wAna.LGT.contigs.list
-xargs samtools faidx /local/projects-t3/RDBKO/dana.postassembly/purge_dups/purged.fa < wAna.LGT.contigs.list >> wAna.LGT.contigs.fasta
-```
-
-**Nucmer aligment to LGT contigs**
-```
-~jdhotopp/bin/residues.pl wAna.LGT.contigs.fasta > wAna.LGT.contigs.residues
-nucmer --maxmatch --prefix wAna.LGT.only /local/aberdeen2rw/julie/Matt_dir/EWANA/references/wAna_v2.complete.pilon.fasta wAna.LGT.contigs.fasta
-/local/projects-t3/RDBKO/scripts/Mchung.LGT.mummerplot.Rmd with residues.txt and LGT.match.delta
-```
-
-**calculate LGT segment length**
-```
-nucmer -l 5000 --prefix LGT.5kbp.segments wAna_v2.complete.pilon.fasta wAna.LGT.contigs.FREEZE.fasta
-show-coords -rl LGT.5kbp.segments.delta > LGT.5kbp.segments.rl.coords
-cat LGT.5kbp.segments.rl.coords | tail -n +6 | awk '{print $8}' | awk '{total = total + $1}END{print "Total LGT segment length = "total}' -
-```
-
-**Estimate wAna LGT segment copy number**
-```
-echo "bwa mem -k 23 -t 8 wAna_v2.complete.pilon.fasta /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_ILLUMINA_DATA/RANDD_20190322_K00134_IL100123454_MX29_L004_R1.fastq /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_ILLUMINA_DATA/RANDD_20190322_K00134_IL100123454_MX29_L004_R2.fastq | samtools view -bho wAna_v2.complete.pilon.mapped.illumina_output.bam" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N bwamem -cwd
-for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=$f O=${f%_o*}_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte/" | qsub -P jdhotopp-lab -l mem_free=2G -N SortSam -cwd; done  
-for f in *sorted.bam; do echo "java -Xmx10g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar MarkDuplicates I=$f O=${f%_s*}_dedup.bam M=${f%_s*}_dedup.metrics VALIDATION_STRINGENCY=SILENT AS=true CREATE_INDEX=true REMOVE_DUPLICATES=true" | qsub -P jdhotopp-lab -l mem_free=10G -N MarkDups -cwd; done
-samtools depth -aa -m 100000000 dedup.bam > dedup.depth.txt
-```
-
-**Read support for individual LGT regions (sliding window bed)**
-```
-for f in dana.assembly.FREEZE.plusMITO.6.22.20.mapped*sorted.bam; do echo "bamCoverage -p 4 -b $f -of bedgraph -o ${f%_s*}_sorted.depth.bed" | qsub -P jdhotopp-lab -N bamCov -l mem_free=10G -q threaded.q -pe thread 4 -cwd -V; done
-```
-**Read support for individual LGT regions (read visualization)**
-```
-echo "bedtools intersect -a dana.assembly.FREEZE.plusMITO.6.22.20.mapped.SQII_sorted.bam -b test.intervals.bed -F 1 > test.result.bam" | qsub -P jdhotopp-lab -l mem_free=10G -N bed.INT -cwd
-```
 
 **Identifying LTR retrotransposons with LTRharvest and LTRdigest**  
 *Create sequence database* 
