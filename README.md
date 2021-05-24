@@ -7,7 +7,7 @@ Eric S. Tvedte
 
 
 ## Table of Contents
-1. [Download D. ananassae and wAna datasets] (#dl)
+1. [Download D. ananassae and wAna datasets](#dl)
 2. [Nuwt analysis](#nuwt)  
 8. [Numt analysis](#numt)
 9. [LTR retrotransposon analysis](#ltr)  
