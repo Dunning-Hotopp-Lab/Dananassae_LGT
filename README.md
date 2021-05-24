@@ -45,7 +45,8 @@ data_viz_scripts/Dana.LGT.Rmd
 mummer/show-coords -rT nuwt.finalpass.filter > nuwt.finalpass.coords
 tail -n +5 nuwt.finalpass.coords | awk '{print $9"\t"$3"\t"$4}' > nuwt.finalpass.bed
 Rscript fixbed.R nuwt.finalpass.bed nuwt.finalpass.fixed.bed
-bedtools coverage -a nuwt.finalpass.fixed.bed -b nuwt.finalpass.fixed.bed -hist | grep 'all' > nuwt.finalpass.fixed.hist #estimated nuwt is 1*1 depth + (1/2)*2 depth, this corrects for small overlapping segments generated using NUCmer
+bedtools coverage -a nuwt.finalpass.fixed.bed -b nuwt.finalpass.fixed.bed -hist | grep 'all' > nuwt.finalpass.fixed.hist.out 
+#estimated nuwt length is 1*1 depth + (1/2)*2 depth in hist.out file, this corrects for small overlapping segments generated using NUCmer
 ```
 
 **Estimate nuwt copy number and HiFi sequencing depth**
