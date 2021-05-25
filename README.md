@@ -209,12 +209,21 @@ grep "^>" Dana.UMIGS.fasta | cut -d " " -f 1 >> decoys.txt
 sed -i.bak -e 's/>//g' decoys.txt
 salmon index -t combined.CDS.genomes.fasta -d decoys.txt -i salmon_index -k 25
 ```
-**Run salmon quantification**
+**Run salmon quantification in mapping-mode with Illumina datasets**
 ```
 #single end
-salmon quant -i salmon_index -l A -r R1.fastq.gz --validateMappings --gcBias --minAssignedFrags 1 -o salmon_output -p 8 --writeMappings | samtools view -bhSo mapped.transcripts.output.bam
+salmon quant -i salmon_index -l A -r R1.fastq.gz --validateMappings --minAssignedFrags 1 -o salmon_output -p 8 --writeMappings | samtools view -bhSo mapped.transcripts.output.bam
 #paired end
-salmon quant -i salmon_index -l A -1 R1.fastq.gz -2 R2.fastq.gz --validateMappings --gcBias --minAssignedFrags 1 -o salmon_output -p 8 --writeMappings | samtools view -bhSo mapped.transcripts.output.bam
+salmon quant -i salmon_index -l A -1 R1.fastq.gz -2 R2.fastq.gz --validateMappings --minAssignedFrags 1 -o salmon_output -p 8 --writeMappings | samtools view -bhSo mapped.transcripts.output.bam
+
+```
+**Run salmon quantification in alignment-mode with ONT datasets**
+```
+cat wAna.CDS.fasta Dana.RS2.CDS.fasta combined.CDS.fasta
+minimap2 -ax map-ont combined.CDS.fasta cHI_ONT.direct.rna.fastq | samtools view -bho cHI_directRNA_mapped.combined.CDS_output.bam #cured Drosophila
+minimap2 -ax map-ont combined.CDS.fasta WT_ONT.direct.rna.fastq | samtools view -bho WT_directRNA_mapped.combined.CDS_output.bam #wild-type Drosophila
+salmon quant -l A -t combined.CDS.fasta -a cHI_directRNA_mapped.combined.CDS_output.bam --noErrorModel --gcBias --minAssignedFrags 1 -o salmon_output 
+salmon quant -l A -t combined.CDS.fasta -a WT_directRNA_mapped.combined.CDS_output.bam --noErrorModel --gcBias --minAssignedFrags 1 -o salmon_output 
 ```
 
 **Map short RNA reads** 
