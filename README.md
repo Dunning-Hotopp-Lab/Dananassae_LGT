@@ -152,27 +152,35 @@ sort -n -k2.17 UMIGS.all.Ty3Gypsy.k2p.distmat.out > UMIGS.all.Ty3Gypsy.k2p.distm
 paste <(grep '>' Ty3Gypsy.5ltr.fasta) <(grep '>' Ty3Gypsy.3ltr.fasta) <(grep '>' Ty3Gypsy.5ltr.rn.fasta) <(awk '{print $1}' UMIGS.all.Ty3Gypsy.k2p.distmat.sorted.out) | column -t | sed 's/>//g' > UMIGS.all.Ty3Gypsy.k2p.distmat.final.out
 ```
 
-
-
 ### NUMT <a name="dana.numt"></a>
 **De novo assembly of mitochondrial genome using Illumina data** 
 ```perl
-echo "perl /local/projects-t3/RDBKO/scripts/NOVOPlasty/NOVOPlasty3.7.pl -c /local/projects-t3/RDBKO/scripts/NOVOPlasty/dana.mito.config.txt" | qsub -P jdhotopp-lab -l mem_free=20G -N NovoPlasty -cwd
-
+perl NOVOPlasty3.7.pl -c dana.mito.config.txt
+smrttools/smrtcmds/bin/pbmm2 align Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.fasta hifi.ccs.bam dana.mito.hifi.arrow1_sorted.bam --sort -j 16 -J 8
+smrttools/smrtcmds/bin/arrow -j 16 dana.mito.hifi.arrow1_sorted.bam -r Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.fasta -o dana.mito.hifi_variants.gff -o dana.mito.hifi.polished.fasta
+```
+**Identify numt contigs**
+```
+mummer/nucmer -l 200 --prefix numt.firstpass dana.mito.hifi.polished.fasta Dana.UMIGS.fasta
+mummer/show-coords -rT numt.firstpass.delta > numt.firstpass.coords
+tail -n +5 numt.firstpass.coords | awk '{print $9}' | sort -n | uniq > numt.contigs.list
+seqkit grep Dana.UMIGS.fasta -f numt.contigs.list > Dana.UMIGS.numt.contigs.fasta
+```
+**Estimate total numt content
+```
+tail -n +5 numt.firstpass.coords | awk '{print $9"\t"$3"\t"$4}' > numt.coords.bed
+Rscript fixbed.R numt.coords.bed numt.coords.fixed.bed
+bedtools coverage -a numt.coords.fixed.bed -b numt.coords.fixed.bed -hist | grep 'all' > numt.coords.fixed.hist.out 
+#estimated numt length is 1*1 depth + (1/2)*2 depth in hist.out file, this corrects for small overlapping segments generated using NUCmer
+```
+**Aligment of mitochondria to numt contigs**
+```
+~jdhotopp/bin/residues.pl Dana.UMIGS.numt.contigs.fasta > Dana.UMIGS.numt.contigs.residues
+nucmer -l 200 --prefix nuwt.finalpass GCA_008033215.1_ASM803321v1_genomic.fna Dana.UMIGS.numt.contigs.fasta
+mummer/delta-filter -q numt.finalpass.delta > numt.finalpass.filter
+data_viz_scripts/Dana.LGT.Rmd
 ```
 
-**Polish with PacBio HiFi**
-```
-echo "/usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bin/pbmm2 align Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.fasta /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_PACBIO_DATA_HiFi/cHI_Dana_2_15_19/PACBIO_DATA/RANDD_20191011_S64018_PL100122512-3_A01.ccs.bam Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.hifi.arrow1_sorted.bam --sort -j 16 -J 8" | qsub -P jdhotopp-lab -l mem_free=50G -N pbmm2.align -q threaded.q -pe thread 16 -cwd -V
-
-echo /usr/local/packages/smrttools/install/current/bundles/smrttools/smrtcmds/bin/arrow -j 16 Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.hifi.arrow1_sorted.bam -r Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.fasta -o Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.hifi.arrow1_variants.gff -o Circularized_assembly_1_dana.illumina.mito.arrow1.polished.fasta" | qsub -P jdhotopp-lab -l mem_free=10G -N smrttools.arrow -q threaded.q -pe thread 16 -cwd
-
---noEvidenceConsensusCall {nocall,reference,lowercasereference}
-                        The consensus base that will be output for sites with
-                        no effective coverage. (default: lowercasereference)
-
-
-```
 
 ### 5. RNAseq analysis <a name="lgt.tx"></a>
 **Download datasets from SRA**
