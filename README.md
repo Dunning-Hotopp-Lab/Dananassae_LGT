@@ -226,3 +226,16 @@ hisat2 -p 8 --max-intronlen 300000 -x Dana.UMIGS.hisat2 -1 reads.R1.fastq.gz -2 
 #ont long reads
 minimap2 -ax splice -uf -k14 -G 300000 Dana.UMIGS.fasta ont.fastq.gz | samtools view -bho output.bam -
 ```
+
+**Circos**
+```
+#gather coordinates of CDS on both strands
+/home/etvedte/scripts/gffread/gffread -C /local/projects-t3/LGT/Dananassae_2020/wAna/GCA_008033215.1_ASM803321v1_genomic.gff --bed > wAna.CDS.bed
+awk '$6=="+"' wAna.CDS.bed | awk '{print $1"\t"$2"\t"$3"\t"$4}' > wAna.CDS.plus.coords.txt
+awk '$6=="-"' wAna.CDS.bed | awk '{print $1"\t"$2"\t"$3"\t"$4}' > wAna.CDS.minus.coords.txt
+#gather coordinates of transcribed genes
+awk '$5>0' /local/projects-t3/LGT/Dananassae_2020/dana.tx/Dana-based/salmon_Dana.UMIGS_output/Illumina_cHI/wana.quant.sf | tail -n +2 - | awk '{print $1}' > Illumina.cHI.transcribed.IDs.list
+awk '{print $1"\t"$2"\t"$3"\t"$4}' wAna.Illumina.cHI.transcribed.CDS.bed > wAna.Illumina.cHI.transcribed.CDS.coords.txt
+
+/usr/local/packages/circos/bin/circos -conf circos_wAna.nuwt.conf
+```
