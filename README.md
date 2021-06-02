@@ -68,19 +68,39 @@ purge_haplotigs purge -g Dana.UMIGS.fasta -b aln.bam -c coverage_stats.csv -d -t
 purge_haplotigs clip -p contigs.fasta -h haplotigs.fasta -l 20000 -g 10000 -t 4
 ```
 
+**Generate PacBio HiFi depth histograms for D. anananassae chr2L/chr4 and wAna CDS**
+```
+minimap2 -ax map-pb -t 16 --secondary=no GCA_008033215.1_ASM803321v1_genomic.fna Dana.UMIGS.fasta | samtools sort -o Dana.UMIGS_mapped_HiFi_primary.bam
+bedtools coverage -a chr2L.bed -b Dana.UMIGS_mapped_HiFi_primary.bam -hist | grep 'all' > Dana.UMIGS.chr2L.mapped_HiFi.hist.bed #histogram of chr2L arm depth
+bedtools coverage -a chr4.bed -b Dana.UMIGS_mapped_HiFi_primary.bam -hist | grep 'all' > Dana.UMIGS.chr2L.mapped_HiFi.hist.bed #histogram of chr4 contigs depth
+minimap2 -ax map-pb -t 16 --secondary=no GCA_008033215.1_ASM803321v1_genomic.fna PB.HiFi.fastq.gz | samtools sort -o GCA_008033215.1_ASM803321v1_mapped_HiFi_primary.bam
+gffread -C GCA_008033215.1_ASM803321v1_genomic.gff --bed > wAna.CDS.bed
+bedtools coverage -a wAna.CDS.bed -b GCA_008033215.1_ASM803321v1_mapped_HiFi_primary.bam | grep 'all' > wAna.cds.hist.bed
+```
+
 ### 3. NUMT analysis <a name="numt"></a>
+**Assemble mitochondrial genome using NOVOPlasty**
+```
+perl NOVOPlasty3.7.pl -c dana.mito.config.txt
+smrttools/smrtcmds/bin/pbmm2 align Circularized_assembly_mito.fasta PB.HiFi.ccs.bam Dana.UMIGS.dana.mito.mapped.HiFi_sorted.bam --sort -j 16 -J 8
+smrttools/smrtcmds/bin/arrow -j 16 Dana.UMIGS.dana.mito.mapped.HiFi_sorted.bam -r Circularized_assembly_mito.fasta -o Dana.UMIGS.mito.hifi_variants.gff -o Dana.UMIGS.mito.polished.fasta
+```
+
 **Search for numts by alignments between mito genome and nuclear genome
 ```
-nucmer -l 100 --maxmatch --prefix dana.numt.firstpass dana.mito.rotate.FREEZE.fasta /local/projects-t3/LGT/Dananassae_2020/dana.quickmerge/flye+canu.FREEZE.custom.params/pilon.long.bases/purge_haplotigs/dana.assembly.FREEZE.plusMITO.08.03.20.fasta
+nucmer -l 100 --maxmatch --prefix dana.numt.firstpass Dana.UMIGS.mito.rotate.FREEZE.fasta Dana.UMIGS.fasta 
+show-coords -rT dana.numt.firstpass.delta > dana.numt.firstpass.coords  
+tail -n +5 numt.firstpass.coords | awk '{print $9}' | sort -n | uniq > numt.contigs.list
+seqkit grep Dana.UMIGS.fasta -f numt.contigs.list > Dana.UMIGS.numt.contigs.fasta
+samtools faidx Dana.UMIGS.fasta tig00000054:4380000-4440000 > tig00000054.numt.fasta
+```
 
-show-coords -r dana.numt.firstpass.delta > dana.numt.firstpass.coords  
-
-tail -n +6 dana.numt.firstpass.coords | awk '{print $13}' | sort -n | uniq > dana.numt.contigs.list
-
-samtools faidx /local/projects-t3/LGT/Dananassae_2020/dana.quickmerge/flye+canu.FREEZE.custom.params/pilon.long.bases/purge_haplotigs/dana.assembly.FREEZE.plusMITO.08.03.20.fasta -i contig_239:5130000-5170000 > dana.numt.contig_239.region.fasta
-
-nucmer -l 100 --maxmatch --prefix dana.numt.finalpass dana.mito.rotate.FREEZE.fasta dana.numt.contig_239.region.fasta
-
+**Align mitochondrial genome to large numt in chromosome 4 contig tig00000054**
+```
+~jdhotopp/bin/residues.pl tig00000054.numt.fasta > tig00000054.numt.residues
+nucmer -l 100 --prefix numt.finalpass Dana.UMIGS.mito.rotate.FREEZE.fasta tig00000054.numt.fasta
+mummer/delta-filter -q numt.finalpass.delta > numt.finalpass.filter
+data_viz_scripts/Dana.LGT.Rmd
 ```
 
 ### 4. LTR retrotransposon analysis <a name="ltr"></a>
@@ -152,36 +172,6 @@ sort -n -k2.17 UMIGS.all.Ty3Gypsy.k2p.distmat.out > UMIGS.all.Ty3Gypsy.k2p.distm
 paste <(grep '>' Ty3Gypsy.5ltr.fasta) <(grep '>' Ty3Gypsy.3ltr.fasta) <(grep '>' Ty3Gypsy.5ltr.rn.fasta) <(awk '{print $1}' UMIGS.all.Ty3Gypsy.k2p.distmat.sorted.out) | column -t | sed 's/>//g' > UMIGS.all.Ty3Gypsy.k2p.distmat.final.out
 ```
 
-### NUMT <a name="dana.numt"></a>
-**De novo assembly of mitochondrial genome using Illumina data** 
-```perl
-perl NOVOPlasty3.7.pl -c dana.mito.config.txt
-smrttools/smrtcmds/bin/pbmm2 align Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.fasta hifi.ccs.bam dana.mito.hifi.arrow1_sorted.bam --sort -j 16 -J 8
-smrttools/smrtcmds/bin/arrow -j 16 dana.mito.hifi.arrow1_sorted.bam -r Circularized_assembly_1_dana.illumina.mito.NOVOPlasty.fasta -o dana.mito.hifi_variants.gff -o dana.mito.hifi.polished.fasta
-```
-**Identify numt contigs**
-```
-mummer/nucmer -l 200 --prefix numt.firstpass dana.mito.hifi.polished.fasta Dana.UMIGS.fasta
-mummer/show-coords -rT numt.firstpass.delta > numt.firstpass.coords
-tail -n +5 numt.firstpass.coords | awk '{print $9}' | sort -n | uniq > numt.contigs.list
-seqkit grep Dana.UMIGS.fasta -f numt.contigs.list > Dana.UMIGS.numt.contigs.fasta
-```
-**Estimate total numt content
-```
-tail -n +5 numt.firstpass.coords | awk '{print $9"\t"$3"\t"$4}' > numt.coords.bed
-Rscript fixbed.R numt.coords.bed numt.coords.fixed.bed
-bedtools coverage -a numt.coords.fixed.bed -b numt.coords.fixed.bed -hist | grep 'all' > numt.coords.fixed.hist.out 
-#estimated numt length is 1*1 depth + (1/2)*2 depth in hist.out file, this corrects for small overlapping segments generated using NUCmer
-```
-**Aligment of mitochondria to numt contigs**
-```
-~jdhotopp/bin/residues.pl Dana.UMIGS.numt.contigs.fasta > Dana.UMIGS.numt.contigs.residues
-nucmer -l 200 --prefix nuwt.finalpass GCA_008033215.1_ASM803321v1_genomic.fna Dana.UMIGS.numt.contigs.fasta
-mummer/delta-filter -q numt.finalpass.delta > numt.finalpass.filter
-data_viz_scripts/Dana.LGT.Rmd
-```
-
-
 ### 5. RNAseq analysis <a name="lgt.tx"></a>
 **Download datasets from SRA**
 ```
@@ -222,98 +212,17 @@ salmon quant -i salmon_index -l A -1 R1.fastq.gz -2 R2.fastq.gz --validateMappin
 cat wAna.CDS.fasta Dana.RS2.CDS.fasta combined.CDS.fasta
 minimap2 -ax map-ont combined.CDS.fasta cHI_ONT.direct.rna.fastq | samtools view -bho cHI_directRNA_mapped.combined.CDS_output.bam #cured Drosophila
 minimap2 -ax map-ont combined.CDS.fasta WT_ONT.direct.rna.fastq | samtools view -bho WT_directRNA_mapped.combined.CDS_output.bam #wild-type Drosophila
-salmon quant -l A -t combined.CDS.fasta -a cHI_directRNA_mapped.combined.CDS_output.bam --noErrorModel --gcBias --minAssignedFrags 1 -o salmon_output 
-salmon quant -l A -t combined.CDS.fasta -a WT_directRNA_mapped.combined.CDS_output.bam --noErrorModel --gcBias --minAssignedFrags 1 -o salmon_output 
+salmon quant -l SF -t combined.CDS.fasta -a cHI_directRNA_mapped.combined.CDS_output.bam --noErrorModel --minAssignedFrags 1 -o salmon_output 
+salmon quant -l SF -t combined.CDS.fasta -a WT_directRNA_mapped.combined.CDS_output.bam --noErrorModel --minAssignedFrags 1 -o salmon_output 
 ```
 
-**Map short RNA reads** 
+**Map RNAseq reads to D. ananassae for manual validation** 
 ```
-hisat2-build polished.contigs.fasta polished.contigs.hisat2  
-hisat2 -p 8 --max-intronlen 300000 -x polished.contigs.hisat2 -U reads.fastq.gz | samtools view -bho output.bam -  
-
-hisat2-build /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/braker/FREEZE/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.hisat2
-
-for f in /local/projects-t3/RDBKO/sequencing/Dana_illumina_RNA_SRA/*.fastq; do echo "hisat2 -p 8 --max-intronlen 300000 -x /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.hisat2 -U $f | samtools view -bho ${f%_1*}_output.bam -" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N hisat2 -cwd; done
-
-paired
-for f in /local/projects-t3/LGT/Dananassae_2020/sequencing/Dana_Hawaii_RNASeq/*1.fastq; do echo "hisat2 -p 8 --max-intronlen 300000 -x /local/projects-t3/LGT/Dananassae_2020/dana.postassembly/arrow/sqII.rd2/dana.hybrid.80X.arrow.rd2.contigs.FREEZE.hisat2 -1 $f -2 ${f%_1*}_2.fastq | samtools view -bho ${f%_1*}_output.bam -" | qsub -P jdhotopp-lab -l mem_free=5G -q threaded.q -pe thread 8 -N hisat2 -cwd; done
-
+hisat2-build Dana.UMIGS.fasta Dana.UMIGS.hisat2 
+#single end
+hisat2 -p 8 --max-intronlen 300000 -x Dana.UMIGS.hisat2 -U reads.fastq.gz | samtools view -bho output.bam -  
+#paired end
+hisat2 -p 8 --max-intronlen 300000 -x Dana.UMIGS.hisat2 -1 reads.R1.fastq.gz -2 reads.R2.fastq.gz | samtools view -bho output.bam -
+#ont long reads
+minimap2 -ax splice -uf -k14 -G 300000 Dana.UMIGS.fasta ont.fastq.gz | samtools view -bho output.bam -
 ```
-
-**Sort BAM**
-```
-java -jar picard.jar SortSam I=output.bam O=sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT
-
-for f in *output.bam; do echo "java -Xmx2g -jar /usr/local/packages/picard-tools-2.5.0/picard.jar SortSam I=$f O=${f%_o*}_sorted.bam SORT_ORDER=coordinate CREATE_INDEX=true VALIDATION_STRINGENCY=SILENT TMP_DIR=/local/scratch/etvedte/" | qsub -P jdhotopp-lab -l mem_free=2G -N SortSam -cwd; done  
-
-```
-
-**Nucmer alignment**
-```
-nucmer --prefix wAna.LGT.max.1000 -l 1000 --maxmatch wAna_v2.complete.pilon.fasta wAna.LGT.contigs.fasta
-
-```
-
-**Custom plot**
-```
-/local/projects-t3/RDBKO/scripts/Mchung.LGT.mummerplot.Rmd using nucmer delta output file and LGT contigs residues file
-```
-
-**Generate coordinates file for nucmer alignments**
-```
-show-coords -rl wAna.LGT.max.1000.delta > wAna.LGT.max.1000.r.coords
-
-NUCMER parsing: grep tig00000335 wAna.LGT.max.1000.r.coords
-REPEATMASKER parsing: grep tig00000335 dana.hybrid.80X.arrow.rd2.contigs.FREEZE.fasta.out
-```
-
-
-**Retrieve putative transposable element sequences**
-```
-samtools faidx /local/projects-t3/LGT/Dananassae_2020/dana.postassemblyLGT/FREEZE tig00000335:416500-418000 > tig00000335_416500_418000.fasta
-```
-
-**Conduct BLAST and Dfam searches of putative transposable elements** 
-```
-https://blast.ncbi.nlm.nih.gov/Blast.cgi
-https://dfam.org/home
-```
-
-**Salmon**
-*Download files*
-```
-wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/008/033/215/GCA_008033215.1_ASM803321v1/GCA_008033215.1_ASM803321v1_cds_from_genomic.fna.gz
-wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/008/033/215/GCA_008033215.1_ASM803321v1/GCA_008033215.1_ASM803321v1_genomic.fna.gz 
-wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/008/033/215/GCA_008033215.1_ASM803321v1/GCA_008033215.1_ASM803321v1_genomic.gff.gz
-gunzip *gz
-```
-*Construct salmon index with wAna genome decoy*
-```
-grep "^>" GCA_008033215.1_ASM803321v1_genomic.fna | cut -d " " -f 1 > decoys.txt
-sed -i.bak -e 's/>//g' decoys.txt
-cat GCA_008033215.1_ASM803321v1_cds_from_genomic.fna GCA_008033215.1_ASM803321v1_genomic.fna > wAna.cds+genome.fasta 
-salmon index -t wAna.cds+genome.fasta -d decoys.txt -i salmon_index -k 25 
-```
-*Map single end reads*
-```
-salmon quant -i salmon_index -l A -r read_1.fq --validateMappings --gcBias -o output_dir -p 8
-```
-*Map paired end reads*
-```
-salmon quant -i salmon_index -l A -1 read_1.fq -2 read_2.fq --validateMappings --gcBias -o output_dir -p 8
-```
-
-
-**Validating TE content in different D. ananassae strains**
-fastq-dump --split-files SRA.accession
-
-for f in *_1.fastq; do echo "java -Xmx10g -jar /usr/local/packages/trimmomatic/trimmomatic-0.38.jar PE -threads 8 $f ${f%_1*}_2.fastq ${f%_1*}_paired_1.fastq ${f%_1*}_unpaired_1.fastq ${f%_1*}_paired_2.fastq ${f%_1*}_unpaired_2.fastq ILLUMINACLIP:2:30:10:5 LEADING:3 TRAILING:3 MINLEN:70 SLIDINGWINDOW:4:15" | qsub -P jdhotopp-lab -l mem_free=10G -N trimmomatic -q threaded.q -pe thread 8 -cwd; done
-
-for f in *paired_1.fastq; do /usr/local/packages/bbtools/reformat.sh in1=$f in2=${f%_1*}_2.fastq out=${f%_1*}_interleaved.fastq; done
-
-use deviate
-
-bwa index /local/projects-t3/LGT/Dananassae_2020/dana.repeats/DAn.repbase.fasta
-single copy genes must be present in TE library
-
-echo "deviaTE --threads 12 --input_fq SRR2127155_interleaved.fastq --read_type phred+33 --library /local/projects-t3/LGT/Dananassae_2020/dana.repeats/DAn.repbase.fasta --families ALL --single_copy_genes SPO11_1,SPO11_2" | qsub -P jdhotopp-lab -l mem_free=10G -q threaded.q -pe thread 12 -V -N deviaTE -cwd
