@@ -239,3 +239,11 @@ awk '{print $1"\t"$2"\t"$3"\t"$4}' wAna.Illumina.cHI.transcribed.CDS.bed > wAna.
 
 /usr/local/packages/circos/bin/circos -conf circos_wAna.nuwt.conf
 ```
+
+GC skew
+awk -v OFS='\t' {'print $1, $2'} GCA_008033215.1_ASM803321v1_genomic.fna.fai > ../wAna.circos/gc.skew/GCA_008033215.1_ASM803321v1_genomic.genomebed.bed
+bedtools makewindows -g GCA_008033215.1_ASM803321v1_genomic.genomebed.bed -w 1000 > GCA_008033215.1_ASM803321v1_genomic.1kbp.windows.bed
+bedtools nuc -fi ../../wAna/GCA_008033215.1_ASM803321v1_genomic.fna -bed GCA_008033215.1_ASM803321v1_genomic.1kbp.windows.bed > GCA_008033215.1_ASM803321v1_genomic.1kbp.nuc.stats.txt
+tail -n +2 GCA_008033215.1_ASM803321v1_genomic.1kbp.nuc.stats.txt | awk '{print $1"\t"$2"\t"$3"\t"$8-$7"\t"$8+$7}' > GCA_008033215.1_ASM803321v1_genomic.1kbp.GC.stats.txt
+sed -i 's/CP042904.1/wa1/g' GCA_008033215.1_ASM803321v1_genomic.1kbp.GC.stats.txt
+awk '{print $1"\t"$2"\t"$3"\t"$4/$5}' GCA_008033215.1_ASM803321v1_genomic.1kbp.GC.stats.txt > GCA_008033215.1_ASM803321v1_genomic.1kbp.GC.skew.txt
