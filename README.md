@@ -231,6 +231,8 @@ minimap2 -ax splice -uf -k14 -G 300000 Dana.UMIGS.fasta ont.fastq.gz | samtools 
 ```
 #gather coordinates of CDS on both strands
 /home/etvedte/scripts/gffread/gffread -C /local/projects-t3/LGT/Dananassae_2020/wAna/GCA_008033215.1_ASM803321v1_genomic.gff --bed > wAna.CDS.bed
+awk '{print $1"\t"$4"\t"$2"\t"$3"\t"$6}' wAna.CDS.bed | sed 's/gene-//g' - > wAna.CDS.slim.bed
+
 awk '$6=="+"' wAna.CDS.bed | awk '{print $1"\t"$2"\t"$3"\t"$4}' > wAna.CDS.plus.coords.txt
 awk '$6=="-"' wAna.CDS.bed | awk '{print $1"\t"$2"\t"$3"\t"$4}' > wAna.CDS.minus.coords.txt
 #gather coordinates of transcribed genes
