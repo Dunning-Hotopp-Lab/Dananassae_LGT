@@ -216,8 +216,9 @@ salmon quant -l SF -t combined.CDS.fasta -a cHI_directRNA_mapped.combined.CDS_ou
 salmon quant -l SF -t combined.CDS.fasta -a WT_directRNA_mapped.combined.CDS_output.bam --noErrorModel --minAssignedFrags 1 -o salmon_output 
 ```
 
-**Map RNAseq reads to D. ananassae for manual validation** 
+**Map RNAseq reads to D. ananassae and wAna for manual validation** 
 ```
+#D. ananassae
 hisat2-build Dana.UMIGS.fasta Dana.UMIGS.hisat2 
 #single end
 hisat2 -p 8 --max-intronlen 300000 -x Dana.UMIGS.hisat2 -U reads.fastq.gz | samtools view -bho output.bam -  
@@ -225,6 +226,14 @@ hisat2 -p 8 --max-intronlen 300000 -x Dana.UMIGS.hisat2 -U reads.fastq.gz | samt
 hisat2 -p 8 --max-intronlen 300000 -x Dana.UMIGS.hisat2 -1 reads.R1.fastq.gz -2 reads.R2.fastq.gz | samtools view -bho output.bam -
 #ont long reads
 minimap2 -ax splice -uf -k14 -G 300000 Dana.UMIGS.fasta ont.fastq.gz | samtools view -bho output.bam -
+#wAna
+hisat2-build GCA_008033215.1_ASM803321v1_genomic.fna GCA_008033215.1_ASM803321v1_genomic.hisat2 
+#single end
+hisat2 -p 8 --max-intronlen 5000 -x GCA_008033215.1_ASM803321v1_genomic.hisat2 -U reads.fastq.gz | samtools view -bho output.bam -  
+#paired end
+hisat2 -p 8 --max-intronlen 5000 -x GCA_008033215.1_ASM803321v1_genomic.hisat2 -1 reads.R1.fastq.gz -2 reads.R2.fastq.gz | samtools view -bho output.bam -
+#ont long reads
+minimap2 -ax splice -uf -k14 -G 5000 GCA_008033215.1_ASM803321v1_genomic.fna ont.fastq.gz | samtools view -bho output.bam -
 ```
 
 **Circos**
