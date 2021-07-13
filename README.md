@@ -15,12 +15,46 @@ Eric S. Tvedte
 11. [Data visualization] (#viz) data_viz_scripts 
 
 ### 1. Download D. ananassae and wAna datasets <a name="dl"></a>
+**Reference genomes**
 ```
 wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/008/033/215/GCA_008033215.1_ASM803321v1/GCA_008033215.1_ASM803321v1_genomic.fna.gz
 gunzip *.gz  
-D. ananassae PacBio Sequel II assembly available on Figshare https://doi.org/10.25387/g3.14096897
+D. ananassae Hawaii PacBio Sequel II assembly available on Figshare https://doi.org/10.25387/g3.14096897
 ```
+**Read datasets**
+```
+D. ananassae Hawaii datasets available on NCBI SRA under BioProject PRJNA602597
+#geographic D. ana strains
+fastq-dump --split-files SRR2126857
+fastq-dump --split-files SRR2126916
+fastq-dump --split-files SRR2127151
+fastq-dump --split-files SRR2127152
+fastq-dump --split-files SRR2127153
+fastq-dump --split-files SRR2127154
+fastq-dump --split-files SRR2127155
+fastq-dump --split-files SRR2127156
+fastq-dump --split-files SRR2127161
+fastq-dump --split-files SRR2127162
+fastq-dump --split-files SRR2127163
+fastq-dump --split-files SRR2127164
+fastq-dump --split-files SRR2127219
+fastq-dump --split-files SRR2135551
+fastq-dump --split-files SRR2135600
+```
+**Trim Illumina reads**
+```
+echo "java -Xmx20g -jar /usr/local/packages/trimmomatic-0.38/trimmomatic-0.38.jar PE -phred33 /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_ILLUMINA_DATA/RANDD_20190322_K00134_IL100123454_MX29_L004_R1.fastq /local/projects-t3/RDBKO/sequencing/cHI_Dana_2_15_19_ILLUMINA_DATA/RANDD_20190322_K00134_IL100123454_MX29_L004_R2.fastq /local/projects-t3/LGT/Dananassae_2020/sequencing/Dana_strains_WGS/$(basename ${f%_R*})_paired_R1.fastq.gz /local/projects-t3/LGT/Dananassae_2020/sequencing/Dana_strains_WGS/$(basename ${f%_R*})_unpaired_R1.fastq.gz /local/projects-t3/LGT/Dananassae_2020/sequencing/Dana_strains_WGS/$(basename ${f%_R*})_paired_R2.fastq.gz /local/projects-t3/LGT/Dananassae_2020/sequencing/Dana_strains_WGS/$(basename ${f%_R*})_unpaired_R2.fastq.gz ILLUMINACLIP:TruSeq3-PE-2.fa:2:30:10:2:keepBothReads TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:36" | qsub -P jdhotopp-lab -l mem_free=20G -N trimmomatic.cHI.UMIGS -cwd
+```
+**Map reads to map to D. ananassae**
+```
+for f in *_paired.R1.fastq.gz; do echo "bwa mem -k 23 -t 12 /local/projects-t3/RDBKO/dana.postassembly/Dana.UMIGS.FREEZE.fasta $f ${f%_p*}_paired.R2.fastq.gz | samtools view -bho /local/projects-t3/LGT/Dananassae_2020/dana.geo/map.dana/$(basename ${f%_p*})_output.bam -" | qsub -P jdhotopp-lab -l mem_free=20G -q threaded.q -pe thread 12 -N bwa.mem.Dana -cwd; done
+```
+**Map reads to map to wAna**
+```
+for f in *_paired.R1.fastq.gz; do echo bwa mem -k 23 -t 12 /local/projects-t3/LGT/Dananassae_2020/wAna/GCA_008033215.1_ASM803321v1_genomic.fna $f ${f%_p*}_paired.R2.fastq.gz | samtools view -bho /local/projects-t3/LGT/Dananassae_2020/dana.geo/map.wana/$(basename ${f%_p*})_output.bam -" | qsub -P jdhotopp-lab -l mem_free=20G -q threaded.q -pe thread 12 -N bwa.mem.wana -cwd; done
+for f in *output.bam; do echo "samtools sort -o ${f%_o*}_sorted.bam $f" | qsub -P jdhotopp-lab -l mem_free=10G -N sam.sort -cwd; done
 
+```
 ### 2. Nuwt analysis <a name="nuwt"></a>
 
 **Identify nuwt contigs**
