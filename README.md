@@ -57,6 +57,8 @@ for f in *dedup.bam; do echo "samtools depth -a -b chr2L.bed -m 100000000 $f > $
 for f in *_paired.R1.fastq.gz; do echo bwa mem -k 23 -t 12 /local/projects-t3/LGT/Dananassae_2020/wAna/GCA_008033215.1_ASM803321v1_genomic.fna $f ${f%_p*}_paired.R2.fastq.gz | samtools view -bho /local/projects-t3/LGT/Dananassae_2020/dana.geo/map.wana/$(basename ${f%_p*})_output.bam -" | qsub -P jdhotopp-lab -l mem_free=20G -q threaded.q -pe thread 12 -N bwa.mem.wana -cwd; done
 for f in *output.bam; do echo "samtools sort -o ${f%_o*}_sorted.bam $f" | qsub -P jdhotopp-lab -l mem_free=10G -N sam.sort -cwd; done
 for f in *sorted.bam; do echo java -Xmx20g -jar /usr/local/packages/picard/picard.jar MarkDuplicates I=$f O=${f%_s*}_dedup.bam M=${f%_s*}_dups.metrics.txt REMOVE_DUPLICATES=TRUE ASSUME_SORT_ORDER=coordinate VALIDATION_STRINGENCY=SILENT" | qsub -P jdhotopp-lab -l mem_free=20G -N picard.MarkDups -cwd; done
+for f in *dedup.bam; do echo "samtools depth -a -b wAna.CDS.bed -m 100000000 $f > ${f%_d*}_dedup.samt.chr2L.depth.txt" | qsub -P jdhotopp-lab -l mem_free=20G -N sam.dp -cwd; done
+for f in *chr2L.depth.txt; do awk '{print $3}' $f | sort -n | uniq -c | awk '{print $1"\t"$2}' > ${f%_d*}_dedup.samt.chr2L.depth.hist.txt; done
 
 ```
 ### 2. Nuwt analysis <a name="nuwt"></a>
