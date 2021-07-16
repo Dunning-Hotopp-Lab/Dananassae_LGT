@@ -8,7 +8,7 @@ Eric S. Tvedte
 
 ## Table of Contents
 1. [Download D. ananassae and wAna datasets](#dl)
-2. [Nuwt identification and quantification](#nuwt id)
+2. [Nuwt identification and quantification](#nuwt_id)
 3. [Numt analysis](#numt)
 4. [LTR retrotransposon analysis](#ltr)  
 5. [Transcription of LGT regions](#lgt.tx) 
@@ -44,7 +44,7 @@ fastq-dump --split-files SRR2135600
 fastq-dump --split-files SRR8278850
 ```
 
-### 2. Nuwt identification and quantification <a name="nuwt id"></a>
+### 2. Nuwt identification and quantification <a name="nuwt_id"></a>
 
 **Identify nuwt contigs**
 ```
