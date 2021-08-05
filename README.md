@@ -147,7 +147,7 @@ samtools faidx Dana.UMIGS.fasta tig00000054:4380000-4440000 > tig00000054.numt.f
 **Align mitochondrial genome to large numt in chromosome 4 contig tig00000054**
 ```
 ~jdhotopp/bin/residues.pl tig00000054.numt.fasta > tig00000054.numt.residues
-nucmer -l 100 --prefix numt.finalpass Dana.UMIGS.mito.rotate.FREEZE.fasta tig00000054.numt.fasta
+nucmer -l 100 --prefix numt.finalpass Dana.UMIGS.mito.rotate.FREEZE.fasta tig00000054.numt.region.fasta
 mummer/delta-filter -q numt.finalpass.delta > numt.finalpass.filter
 data_viz_scripts/Dana.LGT.Rmd
 ```
@@ -159,6 +159,7 @@ samtools view -F 256 -c ONT.numt.region.bam
 minimap2 -ax map-ont -t 16 Dana.UMIGS.contigs.fasta ONT.fastq.gz | samtools sort -o Dana.UMIG.mapped.ONT_sorted.bam  
 bedtools intersect -a Dana.UMIGS_mapped_ONT_sorted.bam -b numt.final.region.bed -F 1 -sorted > PB.CLR.numt.region.bam
 samtools view -F 256 -c PB.CLR.numt.region.bam
+bedtools bamtobed -i PB.CLR.numt.region.bam > PB.CLR.numt.region.bed
 ```
 ### 4. LTR retrotransposon analysis <a name="ltr"></a>
 **Create sequence database**  
