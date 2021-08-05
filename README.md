@@ -151,7 +151,15 @@ nucmer -l 100 --prefix numt.finalpass Dana.UMIGS.mito.rotate.FREEZE.fasta tig000
 mummer/delta-filter -q numt.finalpass.delta > numt.finalpass.filter
 data_viz_scripts/Dana.LGT.Rmd
 ```
-
+**Determine PacBio CLR and ONT reads overlapping numt region**
+```
+minimap2 -ax map-pb -t 16 Dana.UMIGS.contigs.fasta PB.CLR.fastq.gz | samtools sort -o Dana.UMIGS_mapped.PB.CLR_sorted.bam 
+bedtools intersect -a Dana.UMIGS_mapped_PB_CLR_sorted.bam -b numt.final.region.bed -F 1 -sorted > ONT.numt.region.bam
+samtools view -F 256 -c ONT.numt.region.bam
+minimap2 -ax map-ont -t 16 Dana.UMIGS.contigs.fasta ONT.fastq.gz | samtools sort -o Dana.UMIG.mapped.ONT_sorted.bam  
+bedtools intersect -a Dana.UMIGS_mapped_ONT_sorted.bam -b numt.final.region.bed -F 1 -sorted > PB.CLR.numt.region.bam
+samtools view -F 256 -c PB.CLR.numt.region.bam
+```
 ### 4. LTR retrotransposon analysis <a name="ltr"></a>
 **Create sequence database**  
 ```
