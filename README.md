@@ -1,8 +1,8 @@
-# Extreme lateral gene transfer into a fly autosome
+# Accumulation of endosymbiont genomes in an insect autosome followed by endosymbiont replacement
 
 Eric S. Tvedte
 
-2020-10-15
+Last updated 2022-03-07
 
 
 
@@ -10,8 +10,7 @@ Eric S. Tvedte
 1. [Download D. ananassae and wAna datasets](#dl)
 2. [Nuwt identification and quantification](#nuwt_id)
 3. [Numt analysis](#numt)
-4. [LTR retrotransposon analysis](#ltr)  
-5. [Transcription of LGT regions](#lgt.tx) 
+4. [RNAseq analysis](#lgt.tx) 
 
 
 ### 1. Download D. ananassae and wAna datasets <a name="dl"></a>
@@ -135,7 +134,7 @@ smrttools/smrtcmds/bin/pbmm2 align Circularized_assembly_mito.fasta PB.HiFi.ccs.
 smrttools/smrtcmds/bin/arrow -j 16 Dana.UMIGS.dana.mito.mapped.HiFi_sorted.bam -r Circularized_assembly_mito.fasta -o Dana.UMIGS.mito.hifi_variants.gff -o Dana.UMIGS.mito.polished.fasta
 ```
 
-**Search for numts by alignments between mito genome and nuclear genome
+**Search for numts by alignments between mito genome and nuclear genome**
 ```
 nucmer -l 100 --maxmatch --prefix dana.numt.firstpass Dana.UMIGS.mito.rotate.FREEZE.fasta Dana.UMIGS.fasta 
 show-coords -rT dana.numt.firstpass.delta > dana.numt.firstpass.coords  
@@ -161,76 +160,8 @@ bedtools intersect -a Dana.UMIGS_mapped_ONT_sorted.bam -b numt.final.region.bed 
 samtools view -F 256 -c PB.CLR.numt.region.bam
 bedtools bamtobed -i PB.CLR.numt.region.bam > PB.CLR.numt.region.bed
 ```
-### 4. LTR retrotransposon analysis <a name="ltr"></a>
-**Create sequence database**  
-```
-genometools-1.5.9/bin/gt suffixerator -db Dana.UMIGS.fasta -indexname Dana.UMIGS.fasta -tis -suf -lcp -des -ssp -sds -dna
-```
 
-**Retrieve full-length LTR retrotransposons**
-```
-genometools-1.5.9/bin/gt ltrharvest -index Dana.UMIGS.fasta -seqids yes -tabout no -seed 76 -minlenltr 116 -maxlenltr 800 -mindistltr 2280 -maxdistltr 8773 -similar 91 -xdrop 7 -overlaps best > ltrharvest.bestovl.out
-cp ltrharvest.bestovl.out ltrharvest.bestovl.gff
-```
-
-**Use family-based HMMs to retrieve BEL/PAO and Gypsy LTR retrotransposons**
-```
-genometools-1.5.9/bin/gt gff3 -sort ltrharvest.bestovl.gff > ltrharvest.bestovl.sorted.gff
-#download BEL/PAO and Ty3/Gypsy HMMs from Gypsy database https://gydb.org/index.php?title=Main_Page
-genometools-1.5.9/bin/gt ltrdigest -hmms *PAO.hmm -pdomevalcutoff 1E-20 -outfileprefix BELPAO.mapped.1E-20 -seqfile Dana.UMIGS.fasta -matchdescstart < ltrharvest.bestovl.sorted.gff > BELPAO.mapped.1E-20.gff
-genometools-1.5.9/bin/gt ltrdigest -hmms *Gypsy.hmm -pdomevalcutoff 1E-20 -outfileprefix Ty3Gypsy.mapped.1E-20 -seqfile Dana.UMIGS.fasta -matchdescstart < ltrharvest.bestovl.sorted.gff > Ty3Gypsy.mapped.1E-20.gff
-genometools-1.5.9/bin/gt select -rule_files filter_protein_match.rule < BELPAO.mapped.1E-20.gff > BELPAO.matches.gff #rule file in example_data folder
-genometools-1.5.9/bin/gt select -rule_files filter_protein_match.rule < Ty3Gypsy.mapped.1E-20.gff > Ty3Gypsy.matches.gff #rule file in example_data folder
-```
-
-**Extract full-length retrotransposons and 5' + 3' LTR regions**
-```
-genometools-1.5.9/bin/gt extractfeat -type LTR_retrotransposon -seqfile Dana.UMIGS.fasta -matchdesc -coords -seqid BELPAO.matches.gff > BELPAO.retrotransposons.fasta
-genometools-1.5.9/bin/gt extractfeat -type long_terminal_repeat -seqfile Dana.UMIGS.fasta -matchdesc -coords -seqid BELPAO.matches.gff > BELPAO.ltrs.fasta
-genometools-1.5.9/bin/gt extractfeat -type LTR_retrotransposon -seqfile Dana.UMIGS.fasta -matchdesc -coords -seqid Ty3Gypsy.matches.gff > Ty3Gypsy.retrotransposons.fasta
-genometools-1.5.9/bin/gt extractfeat -type long_terminal_repeat -seqfile Dana.UMIGS.fasta -matchdesc -coords -seqid Ty3Gypsy.matches.gff > Ty3Gypsy.ltrs.fasta
-```
-
-**Following manual inspection, remove duplicated records when retrotransposons score better than 1E-20 for both BEL/PAO and Ty3/Gypsy**
-```
-seqkit grep -v -f BELPAO.ltr.remove.list BELPAO.ltrs.fasta > BELPAO.ltrs.final.fasta
-seqkit grep -v -f Ty3Gyspy.ltr.remove.list Ty3Gypsy.ltrs.fasta > Ty3Gypsy.ltrs.final.fasta
-```
-**Calculate pairwise distances:BEL/PAO**
-```
-bbtools/reformat.sh in=BELPAO.ltrs.final.fasta out1=BELPAO.5ltr.fasta out2=BELPAO.3ltr.fasta
-awk '/^>/{print ">BELPAO_ltr_5_" ++i; next}{print}' < BELPAO.5ltr.fasta > BELPAO.5ltr.rn.fasta
-awk '/^>/{print ">BELPAO_ltr_5_" ++i; next}{print}' < BELPAO.3ltr.fasta > BELPAO.3ltr.rn.fasta
-seqkit split -i -O BELPAO.5.split BELPAO.5ltr.rn.fasta
-seqkit split -i -O BELPAO.3.split BELPAO.3ltr.rn.fasta
-for i in $(seq 1 942); do needle -asequence BELPAO.5.split/*5_$i.fasta -bsequence BELPAO.3.split/*3_$i.fasta -gapopen 10 -gapextend 0.5 -aformat3 fasta -outfile BELPAO.$i.align.fasta; done
-for f in *fasta; do /usr/local/packages/gblocks/Gblocks $f -t=d -e=-g.fa -b1=2 -b3=1 -p=n ; done
-rename fasta-g.fa gblocks.fasta *fa
-for f in *gblocks.fasta; do sed -i 's/ //g' $f; done
-for i in $(seq 1 942); do distmat -sequence BELPAO.$i.align.fasta -nucmethod 2 -outfile BELPAO.$i.k2p.distmat.out; done
-for f in *distmat.out; do awk '{print $2, $3}' $f | tail -n 2 | head -n 1 >> UMIGS.all.BELPAO.k2p.distmat.out; done
-sort -n -k2.15 UMIGS.all.BELPAO.k2p.distmat.out > UMIGS.all.BELPAO.k2p.distmat.sorted.out
-paste <(grep '>' BELPAO.5ltr.fasta) <(grep '>' BELPAO.3ltr.fasta) <(grep '>' BELPAO.5ltr.rn.fasta) <(awk '{print $1}' UMIGS.all.BELPAO.k2p.distmat.sorted.out) | column -t | sed 's/>//g' > UMIGS.all.BELPAO.k2p.distmat.final.out
-```
-
-**Calculate pairwise distances:Ty3/Gypsy**
-```
-bbtools/reformat.sh in=Ty3Gypsy.ltrs.final.fasta out1=Ty3Gypsy.5ltr.fasta out2=Ty3Gypsy.3ltr.fasta
-awk '/^>/{print ">Ty3Gypsy_ltr_5_" ++i; next}{print}' < Ty3Gypsy.5ltr.fasta > Ty3Gypsy.5ltr.rn.fasta
-awk '/^>/{print ">Ty3Gypsy_ltr_5_" ++i; next}{print}' < Ty3Gypsy.3ltr.fasta > Ty3Gypsy.3ltr.rn.fasta
-seqkit split -i -O Ty3Gypsy.5.split Ty3Gypsy.5ltr.rn.fasta
-seqkit split -i -O Ty3Gypsy.3.split Ty3Gypsy.3ltr.rn.fasta
-for i in $(seq 1 1172); do needle -asequence Ty3Gypsy.5.split/*5_$i.fasta -bsequence Ty3Gypsy.3.split/*3_$i.fasta -gapopen 10 -gapextend 0.5 -aformat3 fasta -outfile Ty3Gypsy.$i.align.fasta; done
-for f in *fasta; do /usr/local/packages/gblocks/Gblocks $f -t=d -e=-g.fa -b1=2 -b3=1 -p=n ; done
-rename fasta-g.fa gblocks.fasta *fa
-for f in *gblocks.fasta; do sed -i 's/ //g' $f; done
-for i in $(seq 1 1172); do distmat -sequence Ty3Gypsy.$i.align.fasta -nucmethod 2 -outfile Ty3Gypsy.$i.k2p.distmat.out; done
-for f in *distmat.out; do awk '{print $2, $3}' $f | tail -n 2 | head -n 1 >> UMIGS.all.Ty3Gypsy.k2p.distmat.out; done
-sort -n -k2.17 UMIGS.all.Ty3Gypsy.k2p.distmat.out > UMIGS.all.Ty3Gypsy.k2p.distmat.sorted.out
-paste <(grep '>' Ty3Gypsy.5ltr.fasta) <(grep '>' Ty3Gypsy.3ltr.fasta) <(grep '>' Ty3Gypsy.5ltr.rn.fasta) <(awk '{print $1}' UMIGS.all.Ty3Gypsy.k2p.distmat.sorted.out) | column -t | sed 's/>//g' > UMIGS.all.Ty3Gypsy.k2p.distmat.final.out
-```
-
-### 5. RNAseq analysis <a name="lgt.tx"></a>
+### 4. RNAseq analysis <a name="lgt.tx"></a>
 **Download datasets from SRA**
 ```
 #SRA IDs in Table SX
@@ -297,7 +228,7 @@ minimap2 -ax splice -uf -k14 -G 5000 GCA_008033215.1_ASM803321v1_genomic.fna ont
 **Circos**
 ```
 #gather coordinates of CDS on both strands
-/home/etvedte/scripts/gffread/gffread -C /local/projects-t3/LGT/Dananassae_2020/wAna/GCA_008033215.1_ASM803321v1_genomic.gff --bed > wAna.CDS.bed
+gffread -C /local/projects-t3/LGT/Dananassae_2020/wAna/GCA_008033215.1_ASM803321v1_genomic.gff --bed > wAna.CDS.bed
 awk '{print $1"\t"$4"\t"$2"\t"$3"\t"$6}' wAna.CDS.bed | sed 's/gene-//g' - > wAna.CDS.slim.bed
 
 awk '$6=="+"' wAna.CDS.bed | awk '{print $1"\t"$2"\t"$3"\t"$4}' > wAna.CDS.plus.coords.txt
